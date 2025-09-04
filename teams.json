@@ -1,0 +1,93 @@
+[
+  {
+    "team_id": "12011",
+    "team_name": "Mirror of Lyssa",
+    "guilds": [
+      "0006EDDA-43B7-47FC-BFD5-912A49357459"
+    ]
+  },
+  {
+    "team_id": "12015",
+    "team_name": "Bava Nisos",
+    "guilds": [
+      "00372C11-8BB0-EF11-81B7-C3B1C0E42B51",
+      "00EBD25A-C24C-EB11-81B7-C3B1C0E42B51"
+    ]
+  },
+  {
+    "team_id": "12014",
+    "team_name": "Great House Aviary",
+    "guilds": [
+      "0072DA69-28DB-E411-A278-AC162DC0070D",
+      "00B3BD29-4AD0-E411-A3E6-AC162DC0E835"
+    ]
+  },
+  {
+    "team_id": "12007",
+    "team_name": "Bloodstone Gulch",
+    "guilds": [
+      "007BE771-8553-F011-81B8-D206D0C515D3",
+      "00C9CBDA-877C-F011-8465-068565E44296"
+    ]
+  },
+  {
+    "team_id": "12012",
+    "team_name": "Melandru's Dome",
+    "guilds": [
+      "0096CBD3-94B7-E811-81A8-E8B6963692B8"
+    ]
+  },
+  {
+    "team_id": "12010",
+    "team_name": "Grenth's Door",
+    "guilds": [
+      "00A1AB42-C1B6-ED11-8465-0290273D6B3C"
+    ]
+  },
+  {
+    "team_id": "12003",
+    "team_name": "Silent Woods",
+    "guilds": [
+      "00AFD1D4-DDC4-4704-B295-BF347B996931",
+      "00DE5FEE-8291-EB11-81A9-971484D88F04"
+    ]
+  },
+  {
+    "team_id": "12006",
+    "team_name": "Palawadan",
+    "guilds": [
+      "00B4D6F5-29F3-E411-A2AD-AC162DC0A8ED",
+      "00DEB91C-2030-E711-80D3-E4115BE8BBE8",
+      "00FA3654-D0B9-E411-9621-AC162DAE8ACD"
+    ]
+  },
+  {
+    "team_id": "12004",
+    "team_name": "Ettin's Back",
+    "guilds": [
+      "00CC9452-E071-F011-8465-068565E44296",
+      "00DCD19C-D09A-E311-941E-AC162DAE5AD5"
+    ]
+  },
+  {
+    "team_id": "12002",
+    "team_name": "Fortune's Vale",
+    "guilds": [
+      "00E75394-4955-4DC8-93CB-A303927E3258"
+    ]
+  },
+  {
+    "team_id": "12009",
+    "team_name": "Dragrimmar",
+    "guilds": [
+      "00FB0108-9BA0-4081-ACCE-85F30B7A382A"
+    ]
+  },
+  {
+    "team_id": "12008",
+    "team_name": "Frost Citadel",
+    "guilds": [
+      "00FC2D73-D6E1-E711-81A1-020CAB02238C"
+    ]
+  }
+]

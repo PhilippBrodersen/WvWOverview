@@ -1,6 +1,8 @@
 import requests
 import time
 import json
+import os
+from datetime import datetime
 
 team_names = {
     "11001": "Moogooloo",
@@ -61,12 +63,13 @@ for round_num in range(1, MAX_ROUNDS + 1):
         try:
             guild_info = fetch_guild(guild_id, team_id)
             guilds_data[guild_id] = guild_info
+            team_name = team_names[guild_info['team_id']]
 
-            teams_data.setdefault(team_id, {"team_id": team_id, "team_name": guild_info["team_name"], "guilds": []})
+            teams_data.setdefault(team_id, {"team_id": team_id, "team_name": team_name, "guilds": []})
             if guild_id not in teams_data[team_id]["guilds"]:
                 teams_data[team_id]["guilds"].append(guild_id)
 
-            print(f"({idx}/{len(remaining_guilds)}) {guild_info['name']} [{guild_info['tag']}] in {guild_info['team_name']}")
+            print(f"({idx}/{len(remaining_guilds)}) {guild_info['name']} [{guild_info['tag']}] in {team_name}")
         except Exception as e:
             print(f"Error fetching {guild_id}: {e}")
             next_round.append((guild_id, team_id))
@@ -81,9 +84,16 @@ for round_num in range(1, MAX_ROUNDS + 1):
     else:
         print(f"{len(remaining_guilds)} guilds failed after {MAX_ROUNDS} rounds, skipping.")
 
-# --- Save JSON files ---
-with open("/home/p/Desktop/teams.json", "w", encoding="utf-8") as f:
+
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+with open(os.path.join(script_dir, "teams.json"), "w", encoding="utf-8") as f:
     json.dump(list(teams_data.values()), f, ensure_ascii=False, indent=2)
 
-with open("/home/p/Desktop/guilds.json", "w", encoding="utf-8") as f:
+with open(os.path.join(script_dir, "guilds.json"), "w", encoding="utf-8") as f:
     json.dump(guilds_data, f, ensure_ascii=False, indent=2)
+
+with open(os.path.join(script_dir, "skipped_guilds.log"), "a") as f:
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    f.write(f"{timestamp} - Skipped {len(remaining_guilds)} guilds\n")
