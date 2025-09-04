@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teams Viewer</title>
+<style>
+body { font-family: Arial, sans-serif; margin: 20px; }
+.group-grid {
+display: grid;
+grid-template-columns: repeat(5, 1fr);
+gap: 10px;
+margin-bottom: 20px;
+}
+.group-button {
+padding: 10px;
+background: #eee;
+border: 1px solid #ccc;
+border-radius: 5px;
+cursor: pointer;
+text-align: center;
+}
+.group-button.active { background: #cce5ff; border-color: #66b0ff; }
+table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+th, td { padding: 6px 10px; border: 1px solid #ddd; text-align: left; }
+tr:nth-child(even) { background: #f9f9f9; }
+</style>
+</head>
+<body>
+
+
+<h1>Select a Group</h1>
+<div id="groupGrid" class="group-grid"></div>
+<div id="tableWrapper"></div>
+
+
+<script>
+function generateGroups(nGroups = 15, teamsPerGroup = 15) {
+let groups = [];
+for (let g = 1; g <= nGroups; g++) {
+let teams = [];
+for (let t = 1; t <= teamsPerGroup; t++) {
+teams.push({ name: `Team ${t}`, tag: `T${t}` });
+}
+groups.push({ id: g, name: `Group ${g}`, teams });
+}
+return groups;
+}
+
+
+const groups = generateGroups();
+const groupGrid = document.getElementById("groupGrid");
+const tableWrapper = document.getElementById("tableWrapper");
+let activeBtn = null;
+
+
+for (const group of groups) {
+const btn = document.createElement("div");
+btn.className = "group-button";
+btn.textContent = group.name;
+btn.addEventListener("click", () => {
+if (activeBtn) activeBtn.classList.remove("active");
+btn.classList.add("active");
+activeBtn = btn;
+
+
+let html = `<table><thead><tr><th>Name</th><th>Tag</th></tr></thead><tbody>`;
+for (const team of group.teams) {
+html += `<tr><td>${team.name}</td><td>${team.tag}</td></tr>`;
+}
+html += `</tbody></table>`;
+tableWrapper.innerHTML = html;
+});
+groupGrid.appendChild(btn);
+}
+</script>
+
+
+</body>
+</html>
