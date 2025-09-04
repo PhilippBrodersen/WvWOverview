@@ -57,9 +57,6 @@ for round_num in range(1, MAX_ROUNDS + 1):
     next_round = []
 
     for idx, (guild_id, team_id) in enumerate(remaining_guilds, start=1):
-        if idx==20:
-            break
-
         try:
             guild_info = fetch_guild(guild_id, team_id)
             guilds_data[guild_id] = guild_info

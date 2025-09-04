@@ -1,80 +1,142 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Teams Viewer</title>
-<style>
-body { font-family: Arial, sans-serif; margin: 20px; }
-.group-grid {
-display: grid;
-grid-template-columns: repeat(5, 1fr);
-gap: 10px;
-margin-bottom: 20px;
-}
-.group-button {
-padding: 10px;
-background: #eee;
-border: 1px solid #ccc;
-border-radius: 5px;
-cursor: pointer;
-text-align: center;
-}
-.group-button.active { background: #cce5ff; border-color: #66b0ff; }
-table { border-collapse: collapse; width: 100%; margin-top: 20px; }
-th, td { padding: 6px 10px; border: 1px solid #ddd; text-align: left; }
-tr:nth-child(even) { background: #f9f9f9; }
-</style>
-</head>
-<body>
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Teams Viewer</title>
+        <style>
+            body {
+                font-family: Arial, sans-serif;
+                margin: 20px;
+            }
+            .group-grid {
+                display: grid;
+                grid-template-columns: repeat(5, 1fr);
+                gap: 10px;
+                margin-bottom: 20px;
+            }
+            .group-button {
+                padding: 10px;
+                background: #eee;
+                border: 1px solid #ccc;
+                border-radius: 5px;
+                cursor: pointer;
+                text-align: center;
+            }
+            .group-button.active {
+                background: #cce5ff;
+                border-color: #66b0ff;
+            }
+            table {
+                border-collapse: collapse;
+                width: 100%;
+                margin-top: 20px;
+            }
+            th,
+            td {
+                padding: 6px 10px;
+                border: 1px solid #ddd;
+                text-align: left;
+            }
+            tr:nth-child(even) {
+                background: #f9f9f9;
+            }
+        </style>
+    </head>
+    <body>
 
 
-<h1>Select a Group</h1>
-<div id="groupGrid" class="group-grid"></div>
-<div id="tableWrapper"></div>
+        <h1>Select a Group</h1>
+        <div id="groupGrid" class="group-grid"></div>
+        <div id="tableWrapper">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Tag</th>
+                    </tr>
+                </thead>
+                <tbody id="teamBody"></tbody>
+            </table>
+        </div>
 
 
 <script>
-function generateGroups(nGroups = 15, teamsPerGroup = 15) {
-let groups = [];
-for (let g = 1; g <= nGroups; g++) {
-let teams = [];
-for (let t = 1; t <= teamsPerGroup; t++) {
-teams.push({ name: `Team ${t}`, tag: `T${t}` });
-}
-groups.push({ id: g, name: `Group ${g}`, teams });
-}
-return groups;
-}
-
-
-const groups = generateGroups();
 const groupGrid = document.getElementById("groupGrid");
-const tableWrapper = document.getElementById("tableWrapper");
+const teamBody = document.getElementById("teamBody");
 let activeBtn = null;
 
+async function loadData() {
+    // Load JSON files
+    const [teamsRes, guildsRes] = await Promise.all([
+        fetch('teams.json'),
+        fetch('guilds.json')
+    ]);
+    const teamsData = await teamsRes.json();
+    const guildsData = await guildsRes.json();
 
-for (const group of groups) {
-const btn = document.createElement("div");
-btn.className = "group-button";
-btn.textContent = group.name;
-btn.addEventListener("click", () => {
-if (activeBtn) activeBtn.classList.remove("active");
-btn.classList.add("active");
-activeBtn = btn;
+    const nGroups = 15;
+    const teamsPerGroup = 15;
+    const groups = [];
 
+    for (let i = 0; i < nGroups; i++) {
+        const team = teamsData[i];
+        const teamName = team?.team_name || `Team ${i + 1}`;
+        let guilds = [];
 
-let html = `<table><thead><tr><th>Name</th><th>Tag</th></tr></thead><tbody>`;
-for (const team of group.teams) {
-html += `<tr><td>${team.name}</td><td>${team.tag}</td></tr>`;
+        if (team?.guilds) {
+            for (let j = 0; j < teamsPerGroup; j++) {
+                const guildId = team.guilds[j];
+                if (guildId && guildsData[guildId]) {
+                    const g = guildsData[guildId];
+                    guilds.push({ name: g.name, tag: g.tag });
+                } else {
+                    guilds.push({ name: `Guild ${(i + 1) * (j + 1)}`, tag: `T${j + 1}` });
+                }
+            }
+        } else {
+            // fallback to dummy guilds
+            for (let j = 0; j < teamsPerGroup; j++) {
+                guilds.push({ name: `Guild ${(i + 1) * (j + 1)}`, tag: `T${j + 1}` });
+            }
+        }
+
+        groups.push({ id: i + 1, name: teamName, guilds });
+    }
+
+    // Build buttons
+    for (const group of groups) {
+        const btn = document.createElement("div");
+        btn.className = "group-button";
+        btn.textContent = group.name;
+        btn.addEventListener("click", () => {
+            if (activeBtn) activeBtn.classList.remove("active");
+            btn.classList.add("active");
+            activeBtn = btn;
+            loadGroup(group);
+        });
+        groupGrid.appendChild(btn);
+    }
+
+    // Load first group by default
+    if (groups.length > 0) {
+        const firstBtn = groupGrid.children[0];
+        firstBtn.classList.add("active");
+        activeBtn = firstBtn;
+        loadGroup(groups[0]);
+    }
 }
-html += `</tbody></table>`;
-tableWrapper.innerHTML = html;
-});
-groupGrid.appendChild(btn);
+
+function loadGroup(group) {
+    teamBody.innerHTML = group.guilds
+        .map(guild => `<tr><td>${guild.name}</td><td>${guild.tag}</td></tr>`)
+        .join('');
 }
+
+loadData();
 </script>
 
 
-</body>
+
+    </body>
 </html>
