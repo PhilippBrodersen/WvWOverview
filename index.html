@@ -76,7 +76,6 @@ async function loadData() {
     const guildsData = await guildsRes.json();
 
     const nGroups = 15;
-    const teamsPerGroup = 1000;
     const groups = [];
 
     for (let i = 0; i < nGroups; i++) {
@@ -85,7 +84,7 @@ async function loadData() {
         let guilds = [];
 
         if (team?.guilds) {
-            for (let j = 0; j < teamsPerGroup; j++) {
+            for (let j = 0; j < team.guilds.length; j++) {
                 const guildId = team.guilds[j];
                 if (guildId && guildsData[guildId]) {
                     const g = guildsData[guildId];
@@ -95,7 +94,9 @@ async function loadData() {
                 }
             }
 
-            guilds.sort((a, b) => a.name.localeCompare(b.name));
+            guilds.sort((a, b) =>
+                a.name.localeCompare(b.name, 'en', { sensitivity: 'base' })
+            );
         }
 
         groups.push({ id: i + 1, name: teamName, guilds });
