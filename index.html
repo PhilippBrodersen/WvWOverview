@@ -94,11 +94,8 @@ async function loadData() {
                     guilds.push({ name: `Guild ${(i + 1) * (j + 1)}`, tag: `T${j + 1}` });
                 }
             }
-        } else {
-            // fallback to dummy guilds
-            for (let j = 0; j < teamsPerGroup; j++) {
-                guilds.push({ name: `Guild ${(i + 1) * (j + 1)}`, tag: `T${j + 1}` });
-            }
+
+            guilds.sort((a, b) => a.name.localeCompare(b.name));
         }
 
         groups.push({ id: i + 1, name: teamName, guilds });
