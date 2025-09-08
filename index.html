@@ -29,19 +29,21 @@
         }
         .guild-grid {
         display: grid;
-        /* Each guild item gets at least 250px width to fit 31+4 chars comfortably */
-        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        grid-template-columns: repeat(auto-fit, 260px); /* fixed width for each guild */
         gap: 10px;
-        }
-        .guild-item {
-            padding: 8px;
-            background: #f2f2f2;
-            border-radius: 5px;
-            text-align: center;
-            white-space: nowrap; /* keep everything on one line */
-            font-family: monospace; /* optional, ensures consistent width per character */
-            font-size: 14px;
-        }
+        justify-content: start; /* align to left, extra space stays empty */
+    }
+    .guild-item {
+        width: 260px;           /* fixed width to fit 31+4 chars */
+        padding: 8px;
+        background: #f2f2f2;
+        border-radius: 5px;
+        text-align: center;
+        white-space: nowrap;    /* stay on one line */
+        font-family: monospace; /* optional: uniform character width */
+        font-size: 14px;
+        box-sizing: border-box;
+    }
     </style>
 </head>
 <body>
