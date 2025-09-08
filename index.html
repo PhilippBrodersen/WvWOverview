@@ -32,17 +32,17 @@ body {
 }
 
 .guild-wrapper {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, 310px); 
-    grid-auto-rows: min-content;                     
-    grid-gap: 10px;                                  
-    grid-auto-flow: dense;                           
+    column-width: 310px;
+    column-gap: 10px;
 }
 
 .letter-column {
+    display: inline-block;
     background: #f2f2f2;
     padding: 5px;
     border-radius: 5px;
+    width: 100%;
+    margin: 0 0 10px;
     box-sizing: border-box;
 }
 
