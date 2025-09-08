@@ -27,16 +27,19 @@
             background: #cce5ff;
             border-color: #66b0ff;
         }
-        .guild-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-            gap: 10px;
+       .guild-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        gap: 10px;
         }
         .guild-item {
             padding: 8px;
             background: #f2f2f2;
             border-radius: 5px;
             text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
     </style>
 </head>
