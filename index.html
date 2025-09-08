@@ -1,59 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Teams Viewer</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 20px;
-        }
-        .group-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        .group-button {
-            padding: 10px;
-            background: #eee;
-            border: 1px solid #ccc;
-            border-radius: 5px;
-            cursor: pointer;
-            text-align: center;
-        }
-        .group-button.active {
-            background: #cce5ff;
-            border-color: #66b0ff;
-        }
-       .guild-grid {
-        display: grid;
-        grid-template-columns: repeat(auto-fill, 37ch); /* fixed width per guild */
-        gap: 10px;
-        justify-content: start; /* align to left */
-        /* optional: center instead of left:
-        justify-content: center;
-        */
-    }
-
-    .guild-item {
-        padding: 8px;
-        background: #f2f2f2;
-        border-radius: 5px;
-        text-align: left;
-        white-space: nowrap;
-        font-family: monospace;
-        font-size: 14px;
-        box-sizing: border-box;
-    }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Teams Viewer</title>
+<style>
+body {
+    font-family: Arial, sans-serif;
+    margin: 20px;
+}
+.group-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 20px;
+}
+.group-button {
+    padding: 10px;
+    background: #eee;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    cursor: pointer;
+    text-align: center;
+}
+.group-button.active {
+    background: #cce5ff;
+    border-color: #66b0ff;
+}
+.guild-wrapper {
+    display: flex;
+    flex-wrap: wrap; /* fill horizontal space first */
+    gap: 10px;
+}
+.letter-column {
+    background: #f2f2f2;
+    padding: 5px;
+    margin-right: 10px;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    flex: 1 0 auto; /* allow columns to grow horizontally */
+}
+.letter-header {
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+.guild-item {
+    padding: 6px;
+    text-align: left;
+    white-space: nowrap;
+    font-family: monospace;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+</style>
 </head>
 <body>
-
 <h1>Select a Group</h1>
 <div id="groupGrid" class="group-grid"></div>
-<div id="guildWrapper" class="guild-grid"></div>
+<div id="guildWrapper" class="guild-wrapper"></div>
 
 <script>
 const groupGrid = document.getElementById("groupGrid");
@@ -67,7 +72,6 @@ async function loadData() {
     ]);
     const teamsData = await teamsRes.json();
     const guildsData = await guildsRes.json();
-
     const nGroups = 15;
     const groups = [];
 
@@ -75,7 +79,6 @@ async function loadData() {
         const team = teamsData[i];
         const teamName = team?.team_name || `Team ${i + 1}`;
         let guilds = [];
-
         if (team?.guilds) {
             for (let j = 0; j < team.guilds.length; j++) {
                 const guildId = team.guilds[j];
@@ -86,9 +89,9 @@ async function loadData() {
                     guilds.push({ name: `Guild ${(i + 1) * (j + 1)}`, tag: `T${j + 1}` });
                 }
             }
+            // sort alphabetically with locale awareness
             guilds.sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
         }
-
         groups.push({ id: i + 1, name: teamName, guilds });
     }
 
@@ -116,13 +119,43 @@ async function loadData() {
 }
 
 function loadGroup(group) {
-    guildWrapper.innerHTML = group.guilds
-        .map(guild => `<div class="guild-item">${guild.name} [${guild.tag}]</div>`)
-        .join('');
+    guildWrapper.innerHTML = '';
+
+    // Group guilds by first letter
+    const letterMap = {};
+    group.guilds.forEach(g => {
+        const firstLetter = g.name[0].toUpperCase();
+        if (!letterMap[firstLetter]) letterMap[firstLetter] = [];
+        letterMap[firstLetter].push(g);
+    });
+
+    // Sort letters
+    const sortedLetters = Object.keys(letterMap).sort((a,b) => a.localeCompare(b, 'en', {sensitivity: 'base'}));
+
+    // Determine optimal column height to maximize horizontal space
+    const maxPerColumn = Math.ceil(group.guilds.length / sortedLetters.length);
+
+    for (const letter of sortedLetters) {
+        const column = document.createElement('div');
+        column.className = 'letter-column';
+
+        const header = document.createElement('div');
+        header.className = 'letter-header';
+        header.textContent = letter;
+        column.appendChild(header);
+
+        letterMap[letter].forEach(guild => {
+            const div = document.createElement('div');
+            div.className = 'guild-item';
+            div.textContent = `${guild.name} [${guild.tag}]`;
+            column.appendChild(div);
+        });
+
+        guildWrapper.appendChild(column);
+    }
 }
 
 loadData();
 </script>
-
 </body>
 </html>
