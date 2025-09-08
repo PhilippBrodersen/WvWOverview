@@ -9,12 +9,14 @@ body {
     font-family: Arial, sans-serif;
     margin: 20px;
 }
+
 .group-grid {
     display: grid;
     grid-template-columns: repeat(5, 1fr);
     gap: 10px;
     margin-bottom: 20px;
 }
+
 .group-button {
     padding: 10px;
     background: #eee;
@@ -23,28 +25,35 @@ body {
     cursor: pointer;
     text-align: center;
 }
+
 .group-button.active {
     background: #cce5ff;
     border-color: #66b0ff;
 }
+
 .guild-wrapper {
     display: flex;
-    flex-wrap: wrap; /* fill horizontal space first */
+    flex-wrap: wrap;
     gap: 10px;
 }
+
 .letter-column {
     background: #f2f2f2;
     padding: 5px;
-    margin-right: 10px;
     border-radius: 5px;
     display: flex;
     flex-direction: column;
-    flex: 1 0 auto; /* allow columns to grow horizontally */
+    box-sizing: border-box;
+    width: 180px; /* uniform width per letter */
+    min-width: 180px;
 }
+
 .letter-header {
     font-weight: bold;
     margin-bottom: 5px;
+    text-align: center;
 }
+
 .guild-item {
     padding: 6px;
     text-align: left;
@@ -132,10 +141,8 @@ function loadGroup(group) {
     // Sort letters
     const sortedLetters = Object.keys(letterMap).sort((a,b) => a.localeCompare(b, 'en', {sensitivity: 'base'}));
 
-    // Determine optimal column height to maximize horizontal space
-    const maxPerColumn = Math.ceil(group.guilds.length / sortedLetters.length);
-
-    for (const letter of sortedLetters) {
+    // Build letter columns
+    sortedLetters.forEach(letter => {
         const column = document.createElement('div');
         column.className = 'letter-column';
 
@@ -152,7 +159,7 @@ function loadGroup(group) {
         });
 
         guildWrapper.appendChild(column);
-    }
+    });
 }
 
 loadData();
