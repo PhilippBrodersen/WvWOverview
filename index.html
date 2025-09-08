@@ -32,17 +32,17 @@ body {
 }
 
 .guild-wrapper {
-    column-width: 200px;  /* width of each letter box */
-    column-gap: 10px;     /* horizontal spacing between letters */
+    column-width: 200px;
+    column-gap: 10px;
 }
 
 .letter-column {
-    display: inline-block; /* needed for CSS columns */
+    display: inline-block;
     background: #f2f2f2;
     padding: 5px;
     border-radius: 5px;
     width: 100%;
-    margin: 0 0 10px; /* spacing between stacked boxes in the column */
+    margin: 0 0 10px;
     box-sizing: border-box;
 }
 
@@ -96,6 +96,7 @@ async function loadData() {
                     guilds.push({ name: `Guild ${(i + 1) * (j + 1)}`, tag: `T${j + 1}` });
                 }
             }
+            // sort alphabetically with locale awareness
             guilds.sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
         }
         groups.push({ id: i + 1, name: teamName, guilds });
@@ -122,12 +123,17 @@ async function loadData() {
     }
 }
 
+function normalizeLetter(char) {
+    // Remove accents/diacritics and uppercase
+    return char.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+}
+
 function loadGroup(group) {
     guildWrapper.innerHTML = '';
 
     const letterMap = {};
     group.guilds.forEach(g => {
-        const firstLetter = g.name[0].toUpperCase();
+        const firstLetter = normalizeLetter(g.name[0]);
         if (!letterMap[firstLetter]) letterMap[firstLetter] = [];
         letterMap[firstLetter].push(g);
     });
