@@ -27,9 +27,10 @@
             background: #cce5ff;
             border-color: #66b0ff;
         }
-       .guild-grid {
+        .guild-grid {
         display: grid;
-        grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+        /* Each guild item gets at least 250px width to fit 31+4 chars comfortably */
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
         gap: 10px;
         }
         .guild-item {
@@ -37,9 +38,9 @@
             background: #f2f2f2;
             border-radius: 5px;
             text-align: center;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            white-space: nowrap; /* keep everything on one line */
+            font-family: monospace; /* optional, ensures consistent width per character */
+            font-size: 14px;
         }
     </style>
 </head>
