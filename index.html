@@ -1,62 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Teams Viewer</title>
-<style>
-body {
-    font-family: Arial, sans-serif;
-    margin: 20px;
-}
-.group-grid {
-    display: grid;
-    grid-template-columns: repeat(5, 1fr);
-    gap: 10px;
-    margin-bottom: 20px;
-}
-.group-button {
-    padding: 10px;
-    background: #eee;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    cursor: pointer;
-    text-align: center;
-}
-.group-button.active {
-    background: #cce5ff;
-    border-color: #66b0ff;
-}
-.guild-grid {
-    display: grid;
-    grid-auto-flow: column;
-    grid-auto-rows: min-content;
-    column-gap: 10px;
-    row-gap: 0;
-}
-.letter-section {
-    background: #f2f2f2;
-    padding: 5px;
-    border-radius: 5px;
-    display: flex;
-    flex-direction: column;
-    row-gap: 2px;
-    min-width: 10ch;
-}
-.letter-header {
-    font-weight: bold;
-    margin-bottom: 5px;
-}
-.guild-item {
-    padding: 4px 6px;
-    text-align: left;
-    font-family: monospace;
-    font-size: 14px;
-    white-space: nowrap;
-    border-radius: 3px;
-    background: #fff;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teams Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        .group-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        .group-button {
+            padding: 10px;
+            background: #eee;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            cursor: pointer;
+            text-align: center;
+        }
+        .group-button.active {
+            background: #cce5ff;
+            border-color: #66b0ff;
+        }
+       .guild-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, 37ch); /* fixed width per guild */
+        gap: 10px;
+        justify-content: start; /* align to left */
+        /* optional: center instead of left:
+        justify-content: center;
+        */
+    }
+
+    .guild-item {
+        padding: 8px;
+        background: #f2f2f2;
+        border-radius: 5px;
+        text-align: left;
+        white-space: nowrap;
+        font-family: monospace;
+        font-size: 14px;
+        box-sizing: border-box;
+    }
+    </style>
 </head>
 <body>
 
@@ -95,10 +86,9 @@ async function loadData() {
                     guilds.push({ name: `Guild ${(i + 1) * (j + 1)}`, tag: `T${j + 1}` });
                 }
             }
+            guilds.sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
         }
 
-        // Sort guilds by starting letter
-        guilds.sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
         groups.push({ id: i + 1, name: teamName, guilds });
     }
 
@@ -126,42 +116,9 @@ async function loadData() {
 }
 
 function loadGroup(group) {
-    // Group guilds by normalized first letter
-    const collator = new Intl.Collator('en', { sensitivity: 'base' });
-    const grouped = {};
-
-    group.guilds.forEach(g => {
-        // Normalize: remove diacritics
-        let letter = g.name[0].normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-        letter = letter.toUpperCase();
-
-        if (!grouped[letter]) grouped[letter] = [];
-        grouped[letter].push(g);
-    });
-
-    // Sort letters alphabetically
-    const sortedLetters = Object.keys(grouped).sort(collator.compare);
-
-    // Build HTML
-    guildWrapper.innerHTML = '';
-    sortedLetters.forEach(letter => {
-        const section = document.createElement('div');
-        section.className = 'letter-section';
-
-        const header = document.createElement('div');
-        header.className = 'letter-header';
-        header.textContent = letter;
-        section.appendChild(header);
-
-        grouped[letter].forEach(g => {
-            const item = document.createElement('div');
-            item.className = 'guild-item';
-            item.textContent = `${g.name} [${g.tag}]`;
-            section.appendChild(item);
-        });
-
-        guildWrapper.appendChild(section);
-    });
+    guildWrapper.innerHTML = group.guilds
+        .map(guild => `<div class="guild-item">${guild.name} [${guild.tag}]</div>`)
+        .join('');
 }
 
 loadData();
