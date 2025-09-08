@@ -41,25 +41,20 @@ body {
     background: #f2f2f2;
     padding: 5px;
     border-radius: 5px;
-    display: grid;               /* use grid inside letter */
-    grid-template-columns: 1fr;  /* initial single column */
-    grid-auto-rows: auto;
-    row-gap: 4px;
-    column-gap: 4px;
-    width: 180px;                /* uniform width */
+    display: flex;
+    flex-direction: column;
+    width: 180px;       /* uniform width */
     min-width: 180px;
-    max-height: none;            /* let it grow naturally */
 }
 
 .letter-header {
     font-weight: bold;
-    margin-bottom: 5px;
+    margin-bottom: 2px;
     text-align: center;
-    grid-column: 1 / -1;         /* header spans full width */
 }
 
 .guild-item {
-    padding: 6px;
+    padding: 4px 6px;
     text-align: left;
     white-space: nowrap;
     font-family: monospace;
@@ -144,16 +139,12 @@ function loadGroup(group) {
         const column = document.createElement('div');
         column.className = 'letter-column';
 
-        // limit number of rows per column to avoid too tall blocks
-        const maxRows = 10; // adjust as needed
-        const guilds = letterMap[letter];
-
         const header = document.createElement('div');
         header.className = 'letter-header';
         header.textContent = letter;
         column.appendChild(header);
 
-        guilds.forEach((guild, idx) => {
+        letterMap[letter].forEach(guild => {
             const div = document.createElement('div');
             div.className = 'guild-item';
             div.textContent = `${guild.name} [${guild.tag}]`;
