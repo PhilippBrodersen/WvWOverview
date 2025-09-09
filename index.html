@@ -116,7 +116,7 @@ async function loadData() {
     matchupData.forEach(entry => {
         console.log("hi");
         ['red', 'blue', 'green'].forEach(color => {
-            const teamId = String(entry[color])
+            let teamId = String(entry[color])
             if (teamId == 12101) {
                 teamId = 12015;
             }
