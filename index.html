@@ -110,21 +110,12 @@ async function loadData() {
     const matchupData = await matchupRes.json();
     const groups = [];
 
-    const g = guildsData["A0BADA31-B57E-F011-81A9-8FB5CFBE7766"];
-    console.log(g);
-    const t = g.team_id;
-    const n = teamsData[tid].team_name;
-
-    const teamQualityDiv = document.getElementById("teamQuality");
-    teamQualityDiv.textContent = `Quality Ôver Quantity: ${n}`;
-
     const teamsById = {};
     teamsData.forEach(team => {
         teamsById[`${team.team_id}`] = team;
     });
 
     matchupData.forEach(entry => {
-        console.log("hi");
         ['red', 'blue', 'green'].forEach(color => {
             let teamId = String(entry[color])
             if (teamId == 12101) {
@@ -141,6 +132,11 @@ async function loadData() {
                             guilds.push({ name: g.name, tag: g.tag });
                         } else {
                             guilds.push({ name: `Guild ${teamId}-${j + 1}`, tag: `T${j + 1}` });
+                        }
+
+                        if (guildId == "A0BADA31-B57E-F011-81A9-8FB5CFBE7766") {
+                            const teamQualityDiv = document.getElementById("teamQuality");
+                            teamQualityDiv.textContent = `Quality Ôver Quantity: ${team.team_name}`;
                         }
                     }
                     guilds.sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
