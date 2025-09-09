@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Teams Viewer</title>
+<title>WvW Team Viewer</title>
 <style>
 body {
     font-family: Arial, sans-serif;
@@ -63,7 +63,7 @@ body {
 </style>
 </head>
 <body>
-<h1>Select a Group</h1>
+<h1>Select a Team</h1>
 <div id="groupGrid" class="group-grid"></div>
 <div id="guildWrapper" class="guild-wrapper"></div>
 
@@ -124,7 +124,6 @@ async function loadData() {
 }
 
 function normalizeLetter(char) {
-    // Remove accents/diacritics and uppercase
     return char.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 }
 
