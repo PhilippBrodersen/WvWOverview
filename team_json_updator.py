@@ -18,7 +18,7 @@ for url in urls:
     if response.status_code == 200:
         data = response.json()
         worlds = data.get("worlds", {})
-        modified_worlds = {k: int(f"2{v}") for k, v in worlds.items()}
+        modified_worlds = {k: int(f"1{v}") for k, v in worlds.items()}
         results.append(modified_worlds)
     else:
         print(f"Failed to fetch {url}, status code {response.status_code}")
