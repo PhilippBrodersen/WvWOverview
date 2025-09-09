@@ -89,7 +89,7 @@ async function loadData() {
     const [teamsRes, guildsRes, matchupRes] = await Promise.all([
         fetch('teams.json'),
         fetch('guilds.json'),
-        fetch('matchup.json')
+        fetch('matchups.json')
     ]);
     const teamsData = await teamsRes.json();
     const guildsData = await guildsRes.json();

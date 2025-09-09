@@ -26,5 +26,5 @@ for url in urls:
 
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
-with open(os.path.join(script_dir, "matchup.json"), "w", encoding="utf-8") as f:
+with open(os.path.join(script_dir, "matchups.json"), "w", encoding="utf-8") as f:
     json.dump(results, f, ensure_ascii=False, indent=4)
