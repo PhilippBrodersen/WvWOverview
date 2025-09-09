@@ -86,7 +86,10 @@ body {
 </style>
 </head>
 <body>
-<h1>Select a Team</h1>
+<div id="headerContainer" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+    <h1 id="mainTitle">Select a Team</h1>
+    <div id="teamQuality" style="font-weight: bold;"></div>
+</div>
 <div id="tierLabels" class="tier-labels"></div>
 <div id="groupGrid" class="group-grid"></div>
 <div id="guildWrapper" class="guild-wrapper"></div>
@@ -107,11 +110,16 @@ async function loadData() {
     const matchupData = await matchupRes.json();
     const groups = [];
 
+    const tid = guildData["A0BADA31-B57E-F011-81A9-8FB5CFBE7766"].team_id;
+    const n = teamsData[tid].team_name;
+
+    const teamQualityDiv = document.getElementById("teamQuality");
+    teamQualityDiv.textContent = `Quality Ôver Quantity: ${n}`;
+
     const teamsById = {};
     teamsData.forEach(team => {
         teamsById[`${team.team_id}`] = team;
     });
-
 
     matchupData.forEach(entry => {
         console.log("hi");
