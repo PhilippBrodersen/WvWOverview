@@ -33,10 +33,13 @@ body {
     border-color: #66b0ff;
 }
 
-.tier-label {
+.tier-labels {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-bottom: 10px;
     text-align: center;
     font-weight: bold;
-    margin-bottom: 5px;
 }
 
 .guild-wrapper {
@@ -84,6 +87,7 @@ body {
 </head>
 <body>
 <h1>Select a Team</h1>
+<div id="tierLabels" class="tier-labels"></div>
 <div id="groupGrid" class="group-grid"></div>
 <div id="guildWrapper" class="guild-wrapper"></div>
 
@@ -132,33 +136,29 @@ async function loadData() {
         });
     });
 
+   
+    const tierLabelsContainer = document.getElementById("tierLabels");
     const tierLabels = ["Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 5"];
-    const fragment = document.createDocumentFragment();
-   for (let i = 0; i < groups.length; i++) {
 
-    if (i % 3 === 0) {
-        const tierIndex = Math.floor(i / 3);
-        if (tierIndex < tierLabels.length) {
-            const tierLabel = document.createElement("div");
-            tierLabel.className = "tier-label";
-            tierLabel.textContent = tierLabels[tierIndex];
-            fragment.appendChild(tierLabel);
-        }
-    }
-
-    const group = groups[i];
-    const btn = document.createElement("button");
-    btn.className = "group-button";
-    btn.textContent = group.name;
-    btn.addEventListener("click", () => {
-        if (activeBtn) activeBtn.classList.remove("active");
-        btn.classList.add("active");
-        activeBtn = btn;
-        loadGroup(group);
+    tierLabels.forEach(labelText => {
+        const div = document.createElement("div");
+        div.textContent = labelText;
+        tierLabelsContainer.appendChild(div);
     });
 
-    fragment.appendChild(btn);
-}
+    const fragment = document.createDocumentFragment();
+    for (const group of groups) {
+        const btn = document.createElement("button");
+        btn.className = "group-button";
+        btn.textContent = group.name;
+        btn.addEventListener("click", () => {
+            if (activeBtn) activeBtn.classList.remove("active");
+            btn.classList.add("active");
+            activeBtn = btn;
+            loadGroup(group);
+        });
+       fragment.appendChild(btn);
+    }
     groupGrid.appendChild(fragment); 
 
     if (groups.length > 0) {
