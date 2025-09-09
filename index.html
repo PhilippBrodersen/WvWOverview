@@ -86,33 +86,44 @@ const guildWrapper = document.getElementById("guildWrapper");
 let activeBtn = null;
 
 async function loadData() {
-    const [teamsRes, guildsRes] = await Promise.all([
+    const [teamsRes, guildsRes, matchupRes] = await Promise.all([
         fetch('teams.json'),
-        fetch('guilds.json')
+        fetch('guilds.json'),
+        fetch('matchup.json')
     ]);
     const teamsData = await teamsRes.json();
     const guildsData = await guildsRes.json();
+    const matchupData = await matchupRes.json();
     const groups = [];
 
-    for (let i = 0; i < teamsData.length; i++) {
-        const team = teamsData[i];
-        const teamName = team?.team_name || `Team ${i + 1}`;
-        let guilds = [];
-        if (team?.guilds) {
-            for (let j = 0; j < team.guilds.length; j++) {
-                const guildId = team.guilds[j];
-                if (guildId && guildsData[guildId]) {
-                    const g = guildsData[guildId];
-                    guilds.push({ name: g.name, tag: g.tag });
-                } else {
-                    guilds.push({ name: `Guild ${(i + 1) * (j + 1)}`, tag: `T${j + 1}` });
+    const teamsById = {};
+    teamsData.forEach((team, index) => {
+        teamsById[team.id || (index + 1)] = team;
+    });
+
+    matchupData.forEach(entry => {
+        ['red', 'blue', 'green'].forEach(color => {
+            const teamId = entry[color];
+            const team = teamsById[teamId];
+            if (team) {
+                let guilds = [];
+                if (team.guilds) {
+                    for (let j = 0; j < team.guilds.length; j++) {
+                        const guildId = team.guilds[j];
+                        if (guildId && guildsData[guildId]) {
+                            const g = guildsData[guildId];
+                            guilds.push({ name: g.name, tag: g.tag });
+                        } else {
+                            guilds.push({ name: `Guild ${teamId}-${j + 1}`, tag: `T${j + 1}` });
+                        }
+                    }
+                    guilds.sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
                 }
+                groups.push({ id: teamId, name: team.team_name || `Team ${teamId}`, guilds });
             }
-            // sort alphabetically with locale awareness
-            guilds.sort((a, b) => a.name.localeCompare(b.name, 'en', { sensitivity: 'base' }));
-        }
-        groups.push({ id: i + 1, name: teamName, guilds });
-    }
+        });
+    });
+
 
     const fragment = document.createDocumentFragment();
     for (const group of groups) {
