@@ -143,17 +143,20 @@ function loadGroup(group) {
     const sortedLetters = Object.keys(letterMap).sort((a,b) => a.localeCompare(b, 'en', {sensitivity: 'base'}));
 
     sortedLetters.forEach(letter => {
-        const column = document.createElement('div');
+        const column = document.createElement('section');
         column.className = 'letter-column';
+        column.setAttribute('aria-labelledby', `letter-${letter}`);
 
         const header = document.createElement('div');
         header.className = 'letter-header';
+        header.id = `letter-${letter}`;
         header.textContent = letter;
         column.appendChild(header);
 
         letterMap[letter].forEach(guild => {
             const div = document.createElement('div');
             div.className = 'guild-item';
+            div.setAttribute('role', 'listitem');
             div.textContent = `${guild.name} [${guild.tag}]`;
             column.appendChild(div);
         });
