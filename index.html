@@ -100,14 +100,15 @@ async function loadData() {
     teamsData.forEach((team, index) => {
         teamsById[team.team_id || (index + 1)] = team;
     });
+    console.log(teamsById);
 
     matchupData.forEach(entry => {
         console.log("hi");
         ['red', 'blue', 'green'].forEach(color => {
             const teamId = String(entry[color])
-            console.log(teamId);
+            //console.log(teamId);
             const team = teamsById[teamId];
-            console.log(team);
+            //console.log(team);
             if (team) {
                 let guilds = [];
                 if (team.guilds) {
