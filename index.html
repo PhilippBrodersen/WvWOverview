@@ -98,7 +98,7 @@ async function loadData() {
 
     const teamsById = {};
     teamsData.forEach((team, index) => {
-        teamsById[team.team_id || (index + 1)] = team;
+        teamsById[`${team.team_id}`] = team;
     });
     console.log(teamsById);
 
