@@ -60,6 +60,17 @@ body {
     font-size: 14px;
     box-sizing: border-box;
 }
+
+@media (max-width: 600px) {
+    .group-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+@media (max-width: 400px) {
+    .group-grid {
+        grid-template-columns: 1fr;
+    }
+}
 </style>
 </head>
 <body>
