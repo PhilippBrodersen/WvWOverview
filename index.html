@@ -107,21 +107,19 @@ async function loadData() {
     const matchupData = await matchupRes.json();
     const groups = [];
 
-  const teamsById = {};
-teamsData.forEach(team => {
-    let id = team.team_id;
-    if (id === 12101) {
-        id = 12015;
-        team.team_id = 12015;
-    }
-    teamsById[`${id}`] = team;
-});
+    const teamsById = {};
+    teamsData.forEach(team => {
+        teamsById[`${id}`] = team;
+    });
 
 
     matchupData.forEach(entry => {
         console.log("hi");
         ['red', 'blue', 'green'].forEach(color => {
             const teamId = String(entry[color])
+            if (teamId == 12101) {
+                teamId = 12015;
+            }
             const team = teamsById[teamId];
             if (team) {
                 let guilds = [];
