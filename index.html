@@ -144,7 +144,7 @@ function loadGroup(group) {
 
     const letterMap = {};
     group.guilds.forEach(g => {
-        const rawChar = g.name.trim()[0] || "#";
+        const rawChar = (g.name?.trim()[0]) || "#";
         const firstLetter = normalizeLetter(rawChar);
 
         if (!letterMap[firstLetter]) letterMap[firstLetter] = [];
