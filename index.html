@@ -107,6 +107,7 @@ async function loadData() {
             const teamId = entry[color];
             const team = teamsById[teamId];
             if (team) {
+                 console.log(team);
                 let guilds = [];
                 if (team.guilds) {
                     for (let j = 0; j < team.guilds.length; j++) {
