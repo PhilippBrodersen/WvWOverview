@@ -79,10 +79,9 @@ async function loadData() {
     ]);
     const teamsData = await teamsRes.json();
     const guildsData = await guildsRes.json();
-    const nGroups = 15;
     const groups = [];
 
-    for (let i = 0; i < nGroups; i++) {
+    for (let i = 0; i < teamsData.length; i++) {
         const team = teamsData[i];
         const teamName = team?.team_name || `Team ${i + 1}`;
         let guilds = [];
@@ -102,8 +101,9 @@ async function loadData() {
         groups.push({ id: i + 1, name: teamName, guilds });
     }
 
+    const fragment = document.createDocumentFragment();
     for (const group of groups) {
-        const btn = document.createElement("div");
+        const btn = document.createElement("button");
         btn.className = "group-button";
         btn.textContent = group.name;
         btn.addEventListener("click", () => {
@@ -112,8 +112,9 @@ async function loadData() {
             activeBtn = btn;
             loadGroup(group);
         });
-        groupGrid.appendChild(btn);
+       fragment.appendChild(btn);
     }
+    groupGrid.appendChild(fragment); 
 
     if (groups.length > 0) {
         const firstBtn = groupGrid.children[0];
