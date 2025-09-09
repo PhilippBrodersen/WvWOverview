@@ -107,11 +107,16 @@ async function loadData() {
     const matchupData = await matchupRes.json();
     const groups = [];
 
-    const teamsById = {};
-    teamsData.forEach((team, index) => {
-        teamsById[`${team.team_id}`] = team;
-    });
-    teamsById[12015] = teamsById[22101];
+  const teamsById = {};
+teamsData.forEach(team => {
+    let id = team.team_id;
+    if (id === 12101) {
+        id = 12015;
+        team.team_id = 12015;
+    }
+    teamsById[`${id}`] = team;
+});
+
 
     matchupData.forEach(entry => {
         console.log("hi");
