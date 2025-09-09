@@ -102,6 +102,7 @@ async function loadData() {
     });
 
     matchupData.forEach(entry => {
+        console.log("hi");
         ['red', 'blue', 'green'].forEach(color => {
             const teamId = entry[color];
             const team = teamsById[teamId];
