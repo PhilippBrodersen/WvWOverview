@@ -8,6 +8,7 @@
 body {
     font-family: Arial, sans-serif;
     margin: 20px;
+    line-height: 1.5;
 }
 
 .group-grid {
@@ -19,15 +20,16 @@ body {
 
 .group-button {
     padding: 10px;
-    background: #eee;
+    background-color: #eee;
     border: 1px solid #ccc;
     border-radius: 5px;
     cursor: pointer;
     text-align: center;
+    transition: background-color 0.2s, border-color 0.2s;
 }
 
 .group-button.active {
-    background: #cce5ff;
+    background-color: #cce5ff;
     border-color: #66b0ff;
 }
 
@@ -38,26 +40,26 @@ body {
 
 .letter-column {
     display: inline-block;
-    background: #f2f2f2;
-    padding: 5px;
-    border-radius: 5px;
     width: 100%;
-    margin: 0 0 10px;
+    background-color: #f2f2f2;
+    padding: 5px;
+    margin-bottom: 10px;
+    border-radius: 5px;
     box-sizing: border-box;
 }
 
 .letter-header {
     font-weight: bold;
-    margin-bottom: 2px;
+    margin-bottom: 4px;
     text-align: center;
 }
 
 .guild-item {
+    font-family: monospace;
+    font-size: 14px;
     padding: 4px 6px;
     text-align: left;
     white-space: nowrap;
-    font-family: monospace;
-    font-size: 14px;
     box-sizing: border-box;
 }
 
@@ -66,6 +68,7 @@ body {
         grid-template-columns: repeat(2, 1fr);
     }
 }
+
 @media (max-width: 400px) {
     .group-grid {
         grid-template-columns: 1fr;
