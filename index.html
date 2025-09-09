@@ -33,6 +33,12 @@ body {
     border-color: #66b0ff;
 }
 
+.tier-label {
+    text-align: center;
+    font-weight: bold;
+    margin-bottom: 5px;
+}
+
 .guild-wrapper {
     column-width: 310px;
     column-gap: 10px;
@@ -126,20 +132,33 @@ async function loadData() {
         });
     });
 
-
+    const tierLabels = ["Tier 1", "Tier 2", "Tier 3", "Tier 4", "Tier 5"];
     const fragment = document.createDocumentFragment();
-    for (const group of groups) {
-        const btn = document.createElement("button");
-        btn.className = "group-button";
-        btn.textContent = group.name;
-        btn.addEventListener("click", () => {
-            if (activeBtn) activeBtn.classList.remove("active");
-            btn.classList.add("active");
-            activeBtn = btn;
-            loadGroup(group);
-        });
-       fragment.appendChild(btn);
+   for (let i = 0; i < groups.length; i++) {
+
+    if (i % 3 === 0) {
+        const tierIndex = Math.floor(i / 3);
+        if (tierIndex < tierLabels.length) {
+            const tierLabel = document.createElement("div");
+            tierLabel.className = "tier-label";
+            tierLabel.textContent = tierLabels[tierIndex];
+            fragment.appendChild(tierLabel);
+        }
     }
+
+    const group = groups[i];
+    const btn = document.createElement("button");
+    btn.className = "group-button";
+    btn.textContent = group.name;
+    btn.addEventListener("click", () => {
+        if (activeBtn) activeBtn.classList.remove("active");
+        btn.classList.add("active");
+        activeBtn = btn;
+        loadGroup(group);
+    });
+
+    fragment.appendChild(btn);
+}
     groupGrid.appendChild(fragment); 
 
     if (groups.length > 0) {
