@@ -1,3 +1,4 @@
 guilds.json
 teams.json
 *.json
+./__pycache__
