@@ -10,14 +10,6 @@ from fastapi.staticfiles import StaticFiles
 
 app = FastAPI()
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],  # or ["http://127.0.0.1:5500"] if you serve your HTML from live server
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
 app.mount("/static", StaticFiles(directory="static/frontend", html=True), name="frontend")
 
 @app.on_event("startup")
@@ -29,8 +21,9 @@ async def on_startup():
     asyncio.create_task(scheduler())
 
 @app.get("/")
-def read_root():
-    return {"Hello": "World"}
+async def serve_frontend():
+    return FileResponse(os.path.join("static", "frontend", "index.html"))
+
 
 @app.get("/guild/{guild_id}")
 async def get_guild_data(guild_id: str):
