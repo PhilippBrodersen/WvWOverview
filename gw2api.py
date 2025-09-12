@@ -1,6 +1,6 @@
 import asyncio
 import httpx
-from database import init_db, add_guild, get_guild_by_id
+from database import init_db, add_guild
 from typing import Dict, Any
 
 
@@ -38,11 +38,28 @@ async def fetch_guild_info(guild_id: str) -> dict:
 
 
 async def fetch_match(tier: int) -> dict:
-
     data = await fetch_json(f"https://api.guildwars2.com/v2/wvw/matches/2-{tier}")
+    
+    def normalize_team_id(team_id: int) -> str:
+        """Convert to string and replace 12101 with 12014 if needed."""
+        if team_id == 2101:
+            team_id = 2015
+        return f"1{team_id}"
+    
     match = {
-        "red": {"team_id": data["worlds"]["red"], "score": data["victory_points"]["red"]},
-        "blue": {"team_id": data["worlds"]["green"], "score": data["victory_points"]["green"]},
-        "green": {"team_id": data["worlds"]["blue"], "score": data["victory_points"]["blue"]}
+        "red": {
+            "team_id": normalize_team_id(data['worlds']['red']),
+            "score": data['victory_points']['red']
+        },
+        "blue": {
+            "team_id": normalize_team_id(data['worlds']['blue']),
+            "score": data['victory_points']['blue']
+        },
+        "green": {
+            "team_id": normalize_team_id(data['worlds']['green']),
+            "score": data['victory_points']['green']
+        }
     }
+    
+    print(match)
     return match

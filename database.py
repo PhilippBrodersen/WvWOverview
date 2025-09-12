@@ -63,7 +63,7 @@ async def init_db():
             name TEXT NOT NULL
         );
         """)
-        
+
         await cur.execute("DELETE FROM teams")
         await cur.executemany(
             "INSERT INTO teams (id, alt_id, name) VALUES (?, ?, ?)",
@@ -124,17 +124,22 @@ async def init_db():
         await db.commit()
 
 #new stuff
-SQL = {
-    "guild_team_upsert": """
-        INSERT INTO guild_team (guild_id, team_id)
-        VALUES (?, ?)
-        ON CONFLICT(guild_id) DO UPDATE SET team_id=excluded.team_id
-    """,
-    "update_status_insert_or_ignore": """
-        INSERT OR IGNORE INTO update_status (item_type, item_id, status, last_attempt, retry_count)
-        VALUES (?, ?, ?, ?, 0)
-    """,
-}
+async def get_team_for_guild_name(guild_name: str) -> dict | None:
+    """
+    Given a guild name, return the team it belongs to.
+    Returns a dict like {'team_id': ..., 'team_name': ...} or None if not found.
+    """
+    async with get_async_connection() as db:
+        cur = await db.cursor()
+        await cur.execute("""
+            SELECT t.id AS team_id, t.name AS team_name
+            FROM guilds g
+            JOIN guild_team gt ON g.id = gt.guild_id
+            JOIN teams t ON gt.team_id = t.id
+            WHERE g.name = ?
+        """, (guild_name,))
+        row = await cur.fetchone()
+        return dict(row) if row else None
 
 async def batch_execute(sql: str, values: list[tuple]):
     """
@@ -204,195 +209,68 @@ async def add_guild(guild_id: str, name: str, tag: str):
         await conn.commit()
         print("added to db")
 
-# ----------------------------
-# STATUS OPERATIONS
-# ----------------------------
-
-async def set_status(item_type: str, item_id: str, status: str, allow_update: bool = True):
+async def get_all_guilds_for_team(team_id: str) -> list[dict]:
     """
-    Insert or update a row in update_status.
-    If allow_update is False, existing rows will NOT be updated.
+    Returns all guilds belonging to the given team_id.
+    Each guild is returned as a dict with keys: id, name, tag.
     """
-    async with get_async_connection() as conn:
-        conn.execute("""
-            INSERT INTO update_status (item_type, item_id, status, last_attempt, retry_count)
-            VALUES (?, ?, ?, ?, 0)
-            ON CONFLICT(item_type, item_id) DO UPDATE SET
-                status = CASE WHEN ? THEN excluded.status ELSE update_status.status END,
-                last_attempt = CASE WHEN ? THEN excluded.last_attempt ELSE update_status.last_attempt END,
-                retry_count = CASE 
-                    WHEN ? AND excluded.status='failed' THEN update_status.retry_count + 1
-                    ELSE update_status.retry_count
-                END
-        """, (
-            item_type,
-            item_id,
-            status,
-            datetime.datetime.utcnow(),
-            allow_update,
-            allow_update,
-            allow_update,
-        ))
-        conn.commit()
-
-
-async def get_pending_items(item_type: str):
-    async with get_async_connection() as conn:
-        cur = conn.execute("SELECT item_id FROM update_status WHERE item_type=? AND status!='success'", (item_type,))
-        return [row["item_id"] for row in cur.fetchall()]
-
-
-# ----------------------------
-# METADATA OPERATIONS
-# ----------------------------
-
-async def set_metadata(key: str, value: str):
-    """Insert or update a metadata key/value."""
-    async with get_async_connection() as conn:
-        await conn.execute(
+    async with get_async_connection() as db:
+        cur = await db.execute(
             """
-            INSERT INTO metadata (key, value, updated_at)
-            VALUES (?, ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(key) DO UPDATE SET
-                value = excluded.value,
-                updated_at = CURRENT_TIMESTAMP
-            """,
-            (key, value),
-        )
-        await conn.commit()
-
-
-async def get_metadata(key: str) -> Optional[str]:
-    """Fetch metadata value by key, or None if missing."""
-    async with get_async_connection() as conn:
-        cur = await conn.execute("SELECT value FROM metadata WHERE key = ?", (key,))
-        row = await cur.fetchone()
-        return row["value"] if row else None
-
-# ----------------------------
-# TEAM OPERATIONS
-# ----------------------------
-
-async def add_team(team_id: str, name: str, color: Optional[str], alt_id: Optional[str] = None):
-    """Insert or update a team."""
-    async with get_async_connection() as conn:
-        conn.execute(
-            "INSERT OR REPLACE INTO teams (id, alt_id, name, color) VALUES (?, ?, ?, ?)",
-            (team_id, alt_id, name, color),
-        )
-        conn.commit()
-
-
-async def get_team_by_id(team_id: str):
-    async with get_async_connection() as conn:
-        cur = conn.execute("SELECT * FROM teams WHERE id = ?", (team_id,))
-        return cur.fetchone()
-
-
-async def get_all_teams():
-    async with get_async_connection() as conn:
-        return conn.execute("SELECT * FROM teams").fetchall()
-
-async def set_team_for_guild(guild_id: str, team_id: str):
-    """Assign a guild to a team. Overrides previous assignment if it exists."""
-    async with get_async_connection() as conn:
-        conn.execute("""
-            INSERT INTO guild_team (guild_id, team_id)
-            VALUES (?, ?)
-            ON CONFLICT(guild_id) DO UPDATE SET team_id=excluded.team_id
-        """, (guild_id, team_id))
-        conn.commit()
-
-
-async def get_team_for_guild(guild_id: str):
-    """Return the team a guild belongs to."""
-    async with get_async_connection() as conn:
-        cur = conn.execute("""
-            SELECT t.* FROM teams t
-            JOIN guild_team gt ON t.id = gt.team_id
-            WHERE gt.guild_id = ?
-        """, (guild_id,))
-        return cur.fetchone()
-
-
-async def get_guilds_in_team(team_id: str):
-    """Return all guilds in a given team."""
-    async with get_async_connection() as conn:
-        cur = conn.execute("""
-            SELECT g.* FROM guilds g
+            SELECT g.id, g.name, g.tag
+            FROM guilds g
             JOIN guild_team gt ON g.id = gt.guild_id
             WHERE gt.team_id = ?
-        """, (team_id,))
-        return cur.fetchall()
-
-
-# ----------------------------
-# GUILD OPERATIONS
-# ----------------------------
-
-
-async def get_guild_by_id(guild_id: str):
-    async with get_async_connection() as conn:
-        cur = conn.execute("SELECT * FROM guilds WHERE id = ?", (guild_id,))
-        return cur.fetchone()
-
-
-async def get_guild_by_name(name: str):
-    async with get_async_connection() as conn:
-        cur = conn.execute("SELECT * FROM guilds WHERE name = ?", (name,))
-        return cur.fetchone()
-
-# ----------------------------
-# MATCHUP OPERATIONS
-# ----------------------------
-
-async def add_matchup(team1_id: str, team2_id: str, team3_id: str):
-    """Insert a new matchup (3 teams)."""
-    async with get_async_connection() as conn:
-        conn.execute(
-            "INSERT INTO matchups (team1_id, team2_id, team3_id) VALUES (?, ?, ?)",
-            (team1_id, team2_id, team3_id),
+            """,
+            (team_id,)
         )
-        conn.commit()
+        rows = await cur.fetchall()
+        return [dict(row) for row in rows]
 
+async def get_team_name(team_id: str) -> str | None:
+    """
+    Get the team name by ID or alt_id.
+    Tries to match id first, then alt_id.
+    Returns None if not found.
+    """
+    async with get_async_connection() as db:
+        cur = await db.cursor()
+        await cur.execute(
+            "SELECT name FROM teams WHERE id = ? OR alt_id = ?",
+            (team_id, team_id)
+        )
+        row = await cur.fetchone()
+        return row[0] if row else None
 
-async def get_matchups():
-    """Return all matchups."""
-    async with get_async_connection() as conn:
-        return conn.execute("""
-            SELECT m.id,
-                   t1.name as team1,
-                   t2.name as team2,
-                   t3.name as team3
-            FROM matchups m
-            JOIN teams t1 ON m.team1_id = t1.id
-            JOIN teams t2 ON m.team2_id = t2.id
-            JOIN teams t3 ON m.team3_id = t3.id
-        """).fetchall()
+async def get_guild_info(guild_id: str) -> dict | None:
+    async with get_async_connection() as db:
+        cur = await db.execute("SELECT * FROM guilds WHERE id = ?", (guild_id,))
+        row = await cur.fetchone()
+        return row
 
+# 1️⃣ Get all guild IDs belonging to a team
+async def get_guilds_for_team(team_id: str) -> list[str]:
+    async with get_async_connection() as db:
+        cur = await db.execute(
+            "SELECT guild_id FROM guild_team WHERE team_id = ?",
+            (team_id,)
+        )
+        rows = await cur.fetchall()
+        return [row[0] for row in rows]
 
-# ----------------------------
-# QUICK DEMO
-# ----------------------------
+# 2️⃣ Get the team ID a guild belongs to
+async def get_team_for_guild(guild_id: str) -> Optional[str]:
+    async with get_async_connection() as db:
+        cur = await db.execute(
+            "SELECT team_id FROM guild_team WHERE guild_id = ?",
+            (guild_id,)
+        )
+        row = await cur.fetchone()
+        return row[0] if row else None
 
-""" if __name__ == "__main__":
-    init_db()
-
-    # Example usage with hex-like IDs
-    add_team("a1b2c3", "Blue Dragons", "alt-001", "blue")
-    add_guild("deadbeef", "Guild of Light", "GLT", "a1b2c3")
-    add_guild("cafebabe", "Shadow Guild", "SHD", "a1b2c3")
-
-    print("Team:", dict(get_team_by_id("a1b2c3")))
-    print("Guild by ID:", dict(get_guild_by_id("deadbeef")))
-    print("Guild by Name:", dict(get_guild_by_name("Shadow Guild")))
-    print("Team for Guild:", dict(get_team_for_guild("deadbeef")))
-    print("Guilds in Team:", [dict(row) for row in get_guilds_in_team("a1b2c3")])
-
-    # Add a matchup
-    add_team("ff0011", "Red Phoenix", "alt-002", "red")
-    add_team("00ff22", "Green Titans", "alt-003", "green")
-    add_matchup("a1b2c3", "ff0011", "00ff22")
-
-    print("Matchups:", [dict(row) for row in get_matchups()])
- """
+async def get_all_matchups() -> list[dict]:
+    """Return all matchups with tier, team_id, color, and score."""
+    async with get_async_connection() as db:
+        cur = await db.execute("SELECT tier, team_id, color, score FROM matchups ORDER BY tier, color")
+        rows = await cur.fetchall()
+        return [dict(row) for row in rows]

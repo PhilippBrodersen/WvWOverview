@@ -1,6 +1,6 @@
 import hashlib, json
 from gw2api import fetch_all_wvw_guilds, fetch_guild_info, fetch_match
-from database import set_matchup, get_metadata, set_metadata, set_new_guilds_pending, set_teams_for_guilds, add_guild, get_missing_guilds
+from database import set_matchup,  set_new_guilds_pending, set_teams_for_guilds, add_guild, get_missing_guilds
 from helper import checksum_json
 import time
 from datetime import datetime, timedelta
@@ -31,6 +31,15 @@ async def scheduler():
         else:
             print(f"Skipped update_matchup at {datetime.now().time()} (still running)")
 
+async def fetch_and_add_guild(guild_id: str):
+    """Fetch guild info and add it to DB."""
+    try:
+        guild = await fetch_guild_info(guild_id)
+        await add_guild(guild_id, guild["name"], guild["tag"])
+        print(f"Added {guild['name']} [{guild['tag']}]")
+    except Exception:
+        print(f"Guild {guild_id} can't be found")
+
 async def update_teams():
     """Checks if there are new WvW teams"""
     async with teams_lock:
@@ -44,13 +53,7 @@ async def update_teams():
         missing_guilds = await get_missing_guilds(data.keys())
         print(f"Found {len(missing_guilds)} new guilds")
 
-        for guild_id in missing_guilds:
-            try:
-                guild = await fetch_guild_info(guild_id)
-                await add_guild(guild_id, guild["name"], guild["tag"])
-                print(f"Added {guild["name"]} [{guild["tag"]}]")
-            except:
-                 print(f"Guild {guild_id} can't be found")
+        await asyncio.gather(*(fetch_and_add_guild(gid) for gid in missing_guilds))
 
         print("Execution took", time.time() - start, "seconds")
 
