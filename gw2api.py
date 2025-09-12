@@ -2,17 +2,23 @@ import asyncio
 import httpx
 from database import init_db, add_guild
 from typing import Dict, Any
+from typing import Dict, Any, Optional
 
+# Lazy semaphore, created in the running loop
+_semaphore: Optional[asyncio.Semaphore] = None
 
-
-# Semaphore: ensures only 1 external request at a time
-semaphore: asyncio.Semaphore 
+def get_semaphore():
+    global _semaphore
+    if _semaphore is None:
+        _semaphore = asyncio.Semaphore(1)
+    return _semaphore
 
 # Example guild ID
 
 semaphore = asyncio.Semaphore(1)
 async def fetch_json(url: str) -> dict:
-    async with semaphore:
+    sem = get_semaphore()
+    async with sem:
         async with httpx.AsyncClient() as client:
             resp = await client.get(url, timeout=10.0)
             resp.raise_for_status()
@@ -46,7 +52,7 @@ async def fetch_match(tier: int) -> dict:
         if team_id == 2101:
             team_id = 2015
         return f"1{team_id}"
-    
+
     match = {
         "red": {
             "team_id": normalize_team_id(data['worlds']['red']),
@@ -61,6 +67,6 @@ async def fetch_match(tier: int) -> dict:
             "score": data['victory_points']['green']
         }
     }
-    
+
     print(match)
     return match
