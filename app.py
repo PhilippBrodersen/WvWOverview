@@ -6,6 +6,9 @@ from typing import Dict, Any
 from tasks import update_teams, scheduler
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+import os
+
 
 
 app = FastAPI()
