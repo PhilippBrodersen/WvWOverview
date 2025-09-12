@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 from asyncio import get_running_loop
+from gw2api import semaphore
 
 
 
@@ -22,6 +23,8 @@ async def on_startup():
     print("init db")
     await init_db()
     print("db done")
+    global semaphore
+    semaphore = asyncio.Semaphore(1)
     loop = get_running_loop()
     loop.create_task(scheduler())
 

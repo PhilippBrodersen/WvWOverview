@@ -4,8 +4,9 @@ from database import init_db, add_guild
 from typing import Dict, Any
 
 
+
 # Semaphore: ensures only 1 external request at a time
-semaphore = asyncio.Semaphore(1)
+semaphore: asyncio.Semaphore 
 
 # Example guild ID
 
