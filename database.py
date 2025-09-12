@@ -243,7 +243,7 @@ async def get_team_name(team_id: str) -> Optional[Dict[str, Any]]:
         row = await cur.fetchone()
         return row[0] if row else None
 
-async def get_guild_info(guild_id: str) -> dict | None:
+async def get_guild_info(guild_id: str) -> Optional[Dict[str, Any]]:
     async with get_async_connection() as db:
         cur = await db.execute("SELECT * FROM guilds WHERE id = ?", (guild_id,))
         row = await cur.fetchone()
