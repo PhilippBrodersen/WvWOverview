@@ -1,9 +1,10 @@
 import sqlite3
 import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Any, Dict
 import aiosqlite
 from contextlib import asynccontextmanager
+
 
 teams = [
     ("11001", None, "Moogooloo"),
@@ -124,7 +125,7 @@ async def init_db():
         await db.commit()
 
 #new stuff
-async def get_team_for_guild_name(guild_name: str) -> dict | None:
+async def get_team_for_guild_name(guild_name: str) -> Optional[Dict[str, Any]]:
     """
     Given a guild name, return the team it belongs to.
     Returns a dict like {'team_id': ..., 'team_name': ...} or None if not found.
@@ -227,7 +228,7 @@ async def get_all_guilds_for_team(team_id: str) -> list[dict]:
         rows = await cur.fetchall()
         return [dict(row) for row in rows]
 
-async def get_team_name(team_id: str) -> str | None:
+async def get_team_name(team_id: str) -> Optional[Dict[str, Any]]:
     """
     Get the team name by ID or alt_id.
     Tries to match id first, then alt_id.
