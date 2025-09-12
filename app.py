@@ -8,6 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
+from asyncio import get_running_loop
 
 
 
@@ -21,7 +22,8 @@ async def on_startup():
     print("init db")
     await init_db()
     print("db done")
-    asyncio.create_task(scheduler())
+    loop = get_running_loop()
+    loop.create_task(scheduler())
 
 @app.get("/")
 async def serve_frontend():

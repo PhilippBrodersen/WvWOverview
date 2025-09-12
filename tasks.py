@@ -21,15 +21,18 @@ async def scheduler():
         wait_time = (next_run - now).total_seconds()
         await asyncio.sleep(wait_time)
 
+        loop = asyncio.get_running_loop()
+
         if not teams_lock.locked():
-            asyncio.create_task(update_teams())
+            loop.create_task(update_teams())
         else:
             print(f"Skipped update_teams at {datetime.now().time()} (still running)")
 
         if not matchup_lock.locked():
-            asyncio.create_task(update_matchup())
+            loop.create_task(update_matchup())
         else:
             print(f"Skipped update_matchup at {datetime.now().time()} (still running)")
+
 
 async def fetch_and_add_guild(guild_id: str):
     """Fetch guild info and add it to DB."""
