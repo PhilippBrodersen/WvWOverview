@@ -5,7 +5,7 @@ import time
 import os
 
 # === CONFIG ===
-GIT_REPO = "https://github.com/username/repo.git"  # your repo URL
+GIT_REPO = "https://github.com/PhilippBrodersen/WvWOverview"  # your repo URL
 APP_DIR = "."                                       # relative path to repo
 MAIN_FILE = "main.py"                               # entry point
 CHECK_INTERVAL = 60                                 # seconds between update checks
