@@ -208,11 +208,6 @@ async function fetchJSON(url) {
 
 let importantGuilds = [];
 
-async function fetchImportantGuilds() {
-    importantGuilds = await fetchJSON("/important-guilds/") || [];
-}
-
-
 async function fetchMatches() { return await fetchJSON("/matches/") || []; }
 async function fetchTeamName(teamId) {
     const data = await fetchJSON(`/team/name/${teamId}`);
@@ -338,7 +333,7 @@ function renderGuilds(guildsByLetter) {
             div.className = "guild-item";
             div.textContent = `${g.guild_name} [${g.guild_tag}]`;
 
-            if (importantGuilds.includes(g.guild_name)) {
+            if (importantGuilds.has(g.guild_name)) {
                 div.classList.add("special");
             }
 
@@ -350,18 +345,19 @@ function renderGuilds(guildsByLetter) {
 }
 
 // Live update every 10 seconds
-async function startLiveUpdate() {
-    await fetchImportantGuilds();
+async function liveUpdate() {
+    const data = await fetchJSON("/important-guilds/") || [];
+    importantGuilds = new Set(data);
+
     await loadData();
-    setInterval(fetchImportantGuilds, 10000);
-    setInterval(loadData, 10000);
+
+    setTimeout(liveUpdate, 10000);
 }
 
 // Initial setup
-fetchImportantGuilds();
 renderTierLabels();
 updateQoQHeader();
-startLiveUpdate();
+liveUpdate();
 </script>
 </body>
 </html>
