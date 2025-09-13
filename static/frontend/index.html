@@ -346,12 +346,15 @@ function renderGuilds(guildsByLetter) {
 
 // Live update every 10 seconds
 async function liveUpdate() {
-    const data = await fetchJSON("/importantguilds/") || [];
-    importantGuilds = new Set(data);
-
-    await loadData();
-
-    setTimeout(liveUpdate, 10000);
+    try {
+        const data = await fetchJSON("/importantguilds/") || [];
+        importantGuilds = new Set(data);
+        await loadData();
+    } catch (err) {
+        console.error("Live update error:", err);
+    } finally {
+        setTimeout(liveUpdate, 10000);
+    }
 }
 
 // Initial setup
