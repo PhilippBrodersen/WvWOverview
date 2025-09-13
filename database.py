@@ -38,13 +38,12 @@ teams = [
 ]
 
 def normalize_letter(name: str) -> str:
-    name = name.upper()
+    name = name.upper().strip()
     nfkd_form = unicodedata.normalize('NFKD', name)
     normalized = ''.join([c for c in nfkd_form if not unicodedata.combining(c)])
     return normalized[0] if normalized else "#"
 
 DB_PATH = Path(__file__).parent / "app.db"
-
 
 @asynccontextmanager
 async def get_async_connection():
@@ -125,6 +124,24 @@ async def init_db():
 
         await db.commit()
         await create_matchup_view()
+
+async def one_time_update():
+    async with get_async_connection() as db:
+        cur = await db.cursor()
+
+        # Update rows where normalized_letter is NULL or empty
+        await cur.execute("SELECT id, name FROM guilds")
+        rows = await cur.fetchall()
+
+        for guild_id, name in rows:
+            letter = normalize_letter(name)
+            if (name == " Aggressive Asura Rebels"):
+                print("aehdisoehusnto")
+                print(letter)
+            await cur.execute("UPDATE guilds SET normalized_letter = ? WHERE id = ?", (letter, guild_id))
+
+        await db.commit()
+
 
 async def create_matchup_view():
     """Create or replace the vw_matchup_hierarchy view."""
@@ -235,10 +252,11 @@ async def get_missing_guilds(guild_ids: list[str]) -> list[str]:
 async def add_guild(guild_id: str, name: str, tag: str):
     """Insert or update a guild."""
     async with get_async_connection() as conn:
-        normalized_letter = normalize_letter(name)
+        guild_name = name.strip()
+        normalized_letter = normalize_letter(guild_name)
         await conn.execute(
             "INSERT OR IGNORE INTO guilds (id, name, tag, normalized_letter) VALUES (?, ?, ?, ?)",
-            (guild_id, name, tag, normalized_letter),
+            (guild_id, guild_name, tag, normalized_letter),
         )
         await conn.commit()
         print("added to db")

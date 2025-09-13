@@ -1,7 +1,7 @@
 import asyncio
 import httpx
 from fastapi import FastAPI
-from database import get_matchup_hierarchy,get_team_for_guild_name,get_all_guilds_for_team, init_db, add_guild, get_guild_info, get_team_for_guild, get_all_matchups, get_team_name, get_guilds_for_team
+from database import one_time_update,get_matchup_hierarchy,get_team_for_guild_name,get_all_guilds_for_team, init_db, add_guild, get_guild_info, get_team_for_guild, get_all_matchups, get_team_name, get_guilds_for_team
 from typing import Dict, Any
 from tasks import update_teams, scheduler
 from fastapi.middleware.cors import CORSMiddleware
@@ -33,6 +33,7 @@ async def on_startup():
     print("init db")
     await init_db()
     print("db done")
+    #await one_time_update()
     read_important_guilds()
     loop = get_running_loop()
     loop.create_task(scheduler())
