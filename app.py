@@ -41,7 +41,7 @@ async def on_startup():
 async def serve_frontend():
     return FileResponse(os.path.join("static", "frontend", "index.html"))
 
-@app.get("/important-guilds")
+@app.get("/important-guilds/")
 async def get_important_guilds():
     return JSONResponse(content=read_important_guilds())
 
