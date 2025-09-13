@@ -11,10 +11,21 @@ import os
 from asyncio import get_running_loop
 import tasks
 from fastapi.responses import JSONResponse
+from pathlib import Path
+
+IMPORTANT_GUILD_PATH = Path(__file__).parent / "guilds.txt"
 
 app = FastAPI()
 
 app.mount("/static", StaticFiles(directory="static/frontend", html=True), name="frontend")
+
+
+
+def read_important_guilds():
+    file = open(IMPORTANT_GUILD_PATH, "r")
+    lines = file.readlines()
+    lines = [line.strip() for line in lines]
+    return lines
 
 @app.on_event("startup")
 async def on_startup():
@@ -22,12 +33,17 @@ async def on_startup():
     print("init db")
     await init_db()
     print("db done")
+    read_important_guilds()
     loop = get_running_loop()
     loop.create_task(scheduler())
 
 @app.get("/")
 async def serve_frontend():
     return FileResponse(os.path.join("static", "frontend", "index.html"))
+
+@app.get("/important-guilds")
+async def get_important_guilds():
+    return read_important_guilds()
 
 @app.get("/QoQ/")
 async def get_alliance_team():

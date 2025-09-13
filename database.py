@@ -310,7 +310,6 @@ async def get_all_matchups() -> list[dict]:
         return [dict(row) for row in rows]
 
 async def get_matchup_hierarchy():
-    """Query the view and return structured dictionary by tier → team → guild letter."""
     async with get_async_connection() as db:
         cur = await db.cursor()
         await cur.execute("SELECT * FROM vw_matchup_hierarchy")
