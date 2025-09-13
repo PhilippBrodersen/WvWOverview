@@ -346,7 +346,7 @@ function renderGuilds(guildsByLetter) {
 
 // Live update every 10 seconds
 async function liveUpdate() {
-    const data = await fetchJSON("/important-guilds/") || [];
+    const data = await fetchJSON("/importantguilds/") || [];
     importantGuilds = new Set(data);
 
     await loadData();
