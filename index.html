@@ -6,24 +6,10 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WvW Team Viewer</title>
 <style>
-:root {
-    --bg-color: #121212;
-    --panel-bg: #1e1e1e;
-    --text-color: #e0e0e0;
-    --accent: #66b0ff;
-    --border-color: #333;
-}
-
 body {
     font-family: Arial, sans-serif;
     margin: 20px;
     line-height: 1.5;
-    background-color: var(--bg-color);
-    color: var(--text-color);
-}
-
-h1 {
-    color: var(--text-color);
 }
 
 .group-grid {
@@ -37,28 +23,20 @@ h1 {
 .group-button {
     display: flex;
     align-items: center;
-    justify-content: center;
+    justify-content: center; /* name in center */
     position: relative;
-    padding: 8px 12px;
-    border-radius: 8px;
-    border: 1px solid var(--border-color);
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: 1px solid #ccc;
     cursor: pointer;
-    color: var(--text-color);
+    color: #000;
     font-weight: bold;
-    background-color: var(--panel-bg);
-    overflow: hidden;
-    transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
-}
-
-.group-button:hover {
-    border-color: var(--accent);
-    box-shadow: 0 0 8px rgba(102, 176, 255, 0.4);
-    transform: translateY(-1px);
+    overflow: hidden; /* for progress bar */
 }
 
 .group-button span.name {
     position: relative;
-    z-index: 2;
+    z-index: 2;   /* on top */
     text-align: center;
     width: 100%;
 }
@@ -66,9 +44,7 @@ h1 {
 .group-button .score {
     position: absolute;
     left: 10px;
-    z-index: 2;
-    font-size: 0.9em;
-    opacity: 0.85;
+    z-index: 1;
 }
 
 .group-button .progress {
@@ -77,13 +53,12 @@ h1 {
     top: 0;
     bottom: 0;
     z-index: 0;
-    border-radius: 8px 0 0 8px;
-    opacity: 0.3;
+    border-radius: 5px 0 0 5px;
+    /* opacity: 0.5; */
 }
 
 .group-button.active {
-    border-color: var(--accent);
-    box-shadow: 0 0 12px rgba(102, 176, 255, 0.6);
+    border-color: #66b0ff;
 }
 
 .tier-labels {
@@ -93,7 +68,6 @@ h1 {
     margin-bottom: 10px;
     text-align: center;
     font-weight: bold;
-    color: var(--accent);
 }
 
 .guild-wrapper {
@@ -104,40 +78,31 @@ h1 {
 .letter-column {
     display: inline-block;
     width: 100%;
-    background-color: var(--panel-bg);
-    padding: 8px;
-    margin-bottom: 12px;
-    border-radius: 8px;
+    background-color: #f2f2f2;
+    padding: 5px;
+    margin-bottom: 10px;
+    border-radius: 5px;
     box-sizing: border-box;
-    border: 1px solid var(--border-color);
 }
 
 .letter-header {
     font-weight: bold;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     text-align: center;
-    color: var(--accent);
 }
 
 .guild-item {
     font-family: monospace;
     font-size: 14px;
-    padding: 3px 6px;
+    padding: 2px 6px;
     text-align: left;
     white-space: nowrap;
     box-sizing: border-box;
-    border-radius: 4px;
-    transition: background 0.2s;
-}
-
-.guild-item:hover {
-    background-color: rgba(255, 255, 255, 0.08);
 }
 
 @media (max-width: 600px) {
     .group-grid {
         grid-template-columns: repeat(2, 1fr);
-        grid-auto-flow: row;
     }
 }
 
@@ -155,10 +120,6 @@ h1 {
     <h1 id="teamQuality" style="margin: 0; font-weight: bold; white-space: nowrap;"></h1>
   </div>
 </div>
-
-<div id="tierLabels" class="tier-labels"></div>
-<div id="groupGrid" class="group-grid"></div>
-<div id="guildWrapper" class="guild-wrapper"></div>
 
 <div id="tierLabels" class="tier-labels"></div>
 <div id="groupGrid" class="group-grid"></div>
