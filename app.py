@@ -1,7 +1,7 @@
 import asyncio
 import httpx
 from fastapi import FastAPI
-from database import get_team_for_guild_name,get_all_guilds_for_team, init_db, add_guild, get_guild_info, get_team_for_guild, get_all_matchups, get_team_name, get_guilds_for_team
+from database import get_matchup_hierarchy,get_team_for_guild_name,get_all_guilds_for_team, init_db, add_guild, get_guild_info, get_team_for_guild, get_all_matchups, get_team_name, get_guilds_for_team
 from typing import Dict, Any
 from tasks import update_teams, scheduler
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +9,8 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 import os
 from asyncio import get_running_loop
-
+import tasks
+from fastapi.responses import JSONResponse
 
 app = FastAPI()
 
@@ -28,32 +29,14 @@ async def on_startup():
 async def serve_frontend():
     return FileResponse(os.path.join("static", "frontend", "index.html"))
 
-
-@app.get("/guild/{guild_id}")
-async def get_guild_data(guild_id: str):
-    guild = await get_guild_info(guild_id)
-    return guild
-
-@app.get("/guild/team/{guild_id}")
-async def get_guild_team(guild_id: str):
-    team = await get_team_for_guild(guild_id)
-    return team
-
-@app.get("/team/name/{team_id}")
-async def get_teamname(team_id: str):
-    name = await get_team_name(team_id)
-    return {"name": name}
-
-@app.get("/team/guilds/{team_id}")
-async def get_guilds_forteam(team_id: str):
-    guilds = await get_all_guilds_for_team(team_id)
-    return guilds
-
-@app.get("/matches/")
-async def get_matches():
-    return await get_all_matchups()
-
 @app.get("/QoQ/")
 async def get_alliance_team():
     team = await get_team_for_guild_name("Quality Ôver Quantity")
     return team or {"error": "Guild not found"}
+
+@app.get("/data/")
+async def get_data():
+    if tasks.CACHE is None:
+        return {}
+    #return JSONResponse(content=tasks.CACHE)
+    return tasks.CACHE

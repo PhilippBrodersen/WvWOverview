@@ -4,7 +4,8 @@ from pathlib import Path
 from typing import Optional, Any, Dict
 import aiosqlite
 from contextlib import asynccontextmanager
-
+import unicodedata
+from collections import defaultdict
 
 teams = [
     ("11001", None, "Moogooloo"),
@@ -36,6 +37,12 @@ teams = [
     ("12015", "12101", "Bava Nisos"),  # Alt ID directly in data
 ]
 
+def normalize_letter(name: str) -> str:
+    name = name.upper()
+    nfkd_form = unicodedata.normalize('NFKD', name)
+    normalized = ''.join([c for c in nfkd_form if not unicodedata.combining(c)])
+    return normalized[0] if normalized else "#"
+
 DB_PATH = Path(__file__).parent / "app.db"
 
 
@@ -65,19 +72,13 @@ async def init_db():
         );
         """)
 
-        await cur.execute("DELETE FROM teams")
-        await cur.executemany(
-            "INSERT INTO teams (id, alt_id, name) VALUES (?, ?, ?)",
-            teams
-        )
-        await db.commit()
-
         # Guilds
         await cur.execute("""
         CREATE TABLE IF NOT EXISTS guilds (
             id TEXT PRIMARY KEY,       -- guildid is a hex string
             name TEXT NOT NULL,
             tag TEXT
+            normalized_letter TEXT
         );
         """)
 
@@ -123,6 +124,37 @@ async def init_db():
         """)
 
         await db.commit()
+        await create_matchup_view()
+
+async def create_matchup_view():
+    """Create or replace the vw_matchup_hierarchy view."""
+    async with get_async_connection() as db:
+        cur = await db.cursor()
+        await cur.execute("""
+        CREATE VIEW IF NOT EXISTS vw_matchup_hierarchy AS
+        SELECT
+            m.tier,
+            t.id AS team_id,
+            t.name AS team_name,
+            m.color AS team_color,
+            m.score AS team_score,
+            g.id AS guild_id,
+            g.name AS guild_name,
+            g.tag AS guild_tag,
+            g.normalized_letter AS guild_letter
+        FROM matchups m
+        JOIN teams t ON t.id = m.team_id
+        LEFT JOIN guild_team gt ON gt.team_id = t.id
+        LEFT JOIN guilds g ON g.id = gt.guild_id
+        ORDER BY 
+            m.tier,
+            m.color,
+            t.name,
+            g.normalized_letter,
+            g.name;
+        """)
+        await db.commit()
+
 
 #new stuff
 async def get_team_for_guild_name(guild_name: str) -> Optional[Dict[str, Any]]:
@@ -203,9 +235,10 @@ async def get_missing_guilds(guild_ids: list[str]) -> list[str]:
 async def add_guild(guild_id: str, name: str, tag: str):
     """Insert or update a guild."""
     async with get_async_connection() as conn:
+        normalized_letter = normalize_letter(name)
         await conn.execute(
-            "INSERT OR IGNORE INTO guilds (id, name, tag) VALUES (?, ?, ?)",
-            (guild_id, name, tag),
+            "INSERT OR IGNORE INTO guilds (id, name, tag, normalized_letter) VALUES (?, ?, ?, ?)",
+            (guild_id, name, tag, normalized_letter),
         )
         await conn.commit()
         print("added to db")
@@ -275,3 +308,39 @@ async def get_all_matchups() -> list[dict]:
         cur = await db.execute("SELECT tier, team_id, color, score FROM matchups ORDER BY tier, color")
         rows = await cur.fetchall()
         return [dict(row) for row in rows]
+
+async def get_matchup_hierarchy():
+    """Query the view and return structured dictionary by tier → team → guild letter."""
+    async with get_async_connection() as db:
+        cur = await db.cursor()
+        await cur.execute("SELECT * FROM vw_matchup_hierarchy")
+        rows = await cur.fetchall()
+
+    tiers = defaultdict(list)
+
+    for row in rows:
+        tier = row["tier"]
+        team_id = row["team_id"]
+
+        # Find existing team in this tier
+        team = next((t for t in tiers[tier] if t["team_id"] == team_id), None)
+        if not team:
+            team = {
+                "team_id": team_id,
+                "team_name": row["team_name"],
+                "team_color": row["team_color"],
+                "team_score": row["team_score"],
+                "guilds": defaultdict(list)
+            }
+            tiers[tier].append(team)
+
+        if row["guild_id"]:
+            letter = row["guild_letter"] or "#"
+            team["guilds"][letter].append({
+                "guild_id": row["guild_id"],
+                "guild_name": row["guild_name"],
+                "guild_tag": row["guild_tag"]
+            })
+
+    return tiers
+

@@ -1,6 +1,6 @@
 import hashlib, json
 from gw2api import fetch_all_wvw_guilds, fetch_guild_info, fetch_match
-from database import set_matchup,  set_new_guilds_pending, set_teams_for_guilds, add_guild, get_missing_guilds
+from database import get_matchup_hierarchy, set_matchup,  set_new_guilds_pending, set_teams_for_guilds, add_guild, get_missing_guilds
 from helper import checksum_json
 import time
 from datetime import datetime, timedelta
@@ -11,27 +11,39 @@ matchup_lock = asyncio.Lock()
 
 
 async def scheduler():
-    """Run update_teams every minute at hh:mm:05."""
+    await update_dashboard_cache()
     while True:
-        print("hi")
         now = datetime.now()
-        # Next full minute + 5s
-        next_run = (now.replace(second=5, microsecond=0) 
-                    + timedelta(minutes=1))
+        next_run = (now.replace(second=5, microsecond=0) + timedelta(minutes=1))
         wait_time = (next_run - now).total_seconds()
         await asyncio.sleep(wait_time)
 
         loop = asyncio.get_running_loop()
 
+        tasks = []
+
         if not teams_lock.locked():
-            loop.create_task(update_teams())
+            tasks.append(loop.create_task(update_teams()))
         else:
             print(f"Skipped update_teams at {datetime.now().time()} (still running)")
 
         if not matchup_lock.locked():
-            loop.create_task(update_matchup())
+            tasks.append(loop.create_task(update_matchup()))
         else:
             print(f"Skipped update_matchup at {datetime.now().time()} (still running)")
+
+        if tasks:
+            # Wait for all updates to finish before refreshing CACHE
+            await asyncio.gather(*tasks)
+            await update_dashboard_cache()
+
+CACHE = None
+async def update_dashboard_cache():
+    global CACHE
+    hierarchy = await get_matchup_hierarchy()
+    #CACHE = json.dumps(hierarchy)
+    CACHE = hierarchy
+    print("bobobobobob")
 
 
 async def fetch_and_add_guild(guild_id: str):

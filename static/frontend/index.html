@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+<link rel="icon" href="/static/favicons/swords.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WvW Team Viewer</title>
@@ -176,26 +177,26 @@ async function updateQoQHeader() {
 }
 
 async function loadData() {
-    const matches = await fetchMatches();
+     const data = await fetchJSON("/data/"); // single request
+    if (!data) return;
+
     const groups = [];
-    const teamIds = new Set(matches.map(m => m.team_id));
-
-    const teamNames = {};
-    await Promise.all([...teamIds].map(async id => {
-        teamNames[id] = await fetchTeamName(id);
-    }));
-
-    for (const m of matches) {
-        const guilds = await fetchGuildsForTeam(m.team_id);
-        groups.push({
-            id: m.team_id,
-            name: teamNames[m.team_id],
-            guilds: guilds.map(g => ({ name: g.name, tag: g.tag })),
-            tier: m.tier,
-            color: m.color,
-            score: m.score
+    Object.entries(data).forEach(([tier, teams]) => {
+        // skip non-tier keys like QoQ if present
+        console.log(tier)
+        console.log(teams)
+        teams.forEach(team => {
+            groups.push({
+                id: team.team_id,
+                name: team.team_name,
+                score: team.team_score,
+                color: team.team_color,
+                tier: parseInt(tier),
+                guilds: team.guilds  // already split by normalized letter if your view does that
+            });
         });
-    }
+    });
+    console.log(groups.length)
 
     renderGroups(groups);
     await updateQoQHeader();
@@ -258,17 +259,10 @@ function renderGroups(groups) {
     }
 }
 
-function renderGuilds(guilds) {
+function renderGuilds(guildsByLetter) {
     guildWrapper.innerHTML = "";
-    const letterMap = {};
 
-    guilds.forEach(g => {
-        const firstLetter = normalizeLetter((g.name?.trim()[0]) || "#");
-        if (!letterMap[firstLetter]) letterMap[firstLetter] = [];
-        letterMap[firstLetter].push(g);
-    });
-
-    Object.keys(letterMap).sort().forEach(letter => {
+    Object.keys(guildsByLetter).forEach(letter => {
         const column = document.createElement("section");
         column.className = "letter-column";
 
@@ -277,10 +271,10 @@ function renderGuilds(guilds) {
         header.textContent = letter;
         column.appendChild(header);
 
-        letterMap[letter].forEach(g => {
+        guildsByLetter[letter].forEach(g => {
             const div = document.createElement("div");
             div.className = "guild-item";
-            div.textContent = `${g.name} [${g.tag}]`;
+            div.textContent = `${g.guild_name} [${g.guild_tag}]`;
             column.appendChild(div);
         });
 
