@@ -10,8 +10,10 @@ from fastapi.responses import FileResponse
 import os
 from asyncio import get_running_loop
 import tasks
+import json
 from fastapi.responses import JSONResponse
 from pathlib import Path
+from fastapi.responses import StreamingResponse
 
 IMPORTANT_GUILD_PATH = Path(__file__).parent / "guilds.txt"
 
@@ -57,3 +59,48 @@ async def get_data():
         return {}
     #return JSONResponse(content=tasks.CACHE)
     return tasks.CACHE
+
+async def event_generator():
+    last_cache = None
+    last_guilds = None
+
+    def make_message(cache, guilds):
+        # Ensure cache is a dict
+        if isinstance(cache, str):
+            try:
+                cache = json.loads(cache)
+            except Exception:
+                cache = {}
+        elif not isinstance(cache, dict):
+            cache = {}
+        return {
+            "data": cache,
+            "important_guilds": guilds
+        }
+
+    # Initial message
+    message = make_message(tasks.CACHE, read_important_guilds())
+    last_cache = message["data"]
+    last_guilds = message["important_guilds"]
+    yield f"data: {json.dumps(message)}\n\n"
+
+    while True:
+        try:
+            await asyncio.wait_for(tasks.cache_update_event.wait(), timeout=60.0)
+            current_cache = tasks.CACHE
+            current_guilds = read_important_guilds()
+
+            message = make_message(current_cache, current_guilds)
+            if message["data"] != last_cache or message["important_guilds"] != last_guilds:
+                yield f"data: {json.dumps(message)}\n\n"
+                last_cache = message["data"]
+                last_guilds = message["important_guilds"]
+
+            tasks.cache_update_event.clear()
+
+        except asyncio.TimeoutError:
+            yield ": keep-alive\n\n"
+
+@app.get("/stream/data/")
+async def stream_data():
+    return StreamingResponse(event_generator(), media_type="text/event-stream")

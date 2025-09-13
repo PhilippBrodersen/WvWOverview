@@ -206,7 +206,7 @@ async function fetchJSON(url) {
     }
 }
 
-let importantGuilds = [];
+let importantGuilds = new Set([]);
 
 async function fetchMatches() { return await fetchJSON("/matches/") || []; }
 async function fetchTeamName(teamId) {
@@ -318,6 +318,7 @@ function renderGroups(groups) {
 
 function renderGuilds(guildsByLetter) {
     guildWrapper.innerHTML = "";
+    console.log(importantGuilds)
 
     Object.keys(guildsByLetter).forEach(letter => {
         const column = document.createElement("section");
@@ -345,7 +346,7 @@ function renderGuilds(guildsByLetter) {
 }
 
 // Live update every 10 seconds
-async function liveUpdate() {
+/* async function liveUpdate() {
     try {
         const data = await fetchJSON("/importantguilds/") || [];
         importantGuilds = new Set(data);
@@ -355,12 +356,57 @@ async function liveUpdate() {
     } finally {
         setTimeout(liveUpdate, 10000);
     }
+} */
+
+async function setupSSE() {
+    const evtSource = new EventSource("/stream/data/");
+
+    evtSource.onmessage = async function(event) {
+        try {
+            const payload = JSON.parse(event.data);
+            console.log(payload)
+
+            // Update important guilds if included
+            const cacheData = payload.data || {};
+            if (payload.important_guilds) {
+                importantGuilds = new Set(payload.important_guilds);
+            }
+
+            // Convert server data into groups
+            const groups = [];
+            Object.entries(cacheData).forEach(([tier, teams]) => {
+                if (!Number.isInteger(parseInt(tier))) return;
+
+                teams.forEach(team => {
+                    groups.push({
+                        id: team.team_id,
+                        name: team.team_name,
+                        score: team.team_score,
+                        color: team.team_color,
+                        tier: parseInt(tier),
+                        guilds: team.guilds
+                    });
+                });
+            });
+
+            renderGroups(groups);
+            await updateQoQHeader();
+
+        } catch (err) {
+            console.error("Error parsing SSE data:", err);
+        }
+    };
+
+    evtSource.onerror = function(err) {
+        console.error("SSE connection error:", err);
+    };
 }
 
 // Initial setup
 renderTierLabels();
 updateQoQHeader();
-liveUpdate();
+setupSSE();
+//liveUpdate();
 </script>
 </body>
 </html>

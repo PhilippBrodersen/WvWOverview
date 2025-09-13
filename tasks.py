@@ -38,12 +38,15 @@ async def scheduler():
             await update_dashboard_cache()
 
 CACHE = None
+cache_update_event = asyncio.Event()
 async def update_dashboard_cache():
     global CACHE
     hierarchy = await get_matchup_hierarchy()
     #CACHE = json.dumps(hierarchy)
     CACHE = hierarchy
-    print("bobobobobob")
+    cache_update_event.set()  # signal that CACHE changed
+    cache_update_event.clear()  # reset for next change
+    print("CACHE updated")
 
 
 async def fetch_and_add_guild(guild_id: str):
