@@ -43,7 +43,7 @@ async def serve_frontend():
 
 @app.get("/important-guilds")
 async def get_important_guilds():
-    return read_important_guilds()
+    return JSONResponse(content=read_important_guilds())
 
 @app.get("/QoQ/")
 async def get_alliance_team():
