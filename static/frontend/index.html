@@ -177,6 +177,7 @@ const groupGrid = document.getElementById("groupGrid");
 const guildWrapper = document.getElementById("guildWrapper");
 const tierLabelsContainer = document.getElementById("tierLabels");
 let activeBtnId = null;
+let lastEtag = null;
 
 const COLOR_MAP = {
     red: "#d62222",
@@ -199,12 +200,28 @@ function renderTierLabels() {
 
 async function fetchJSON(url) {
     try {
-        const res = await fetch(url);
-        return res.ok ? await res.json() : null;
-    } catch {
+        const headers = {};
+        if (lastEtag) {
+            headers["If-None-Match"] = lastEtag;
+        }
+
+        const res = await fetch(url, { headers });
+
+        if (res.status === 304) {
+            // nothing changed
+            return null;
+        }
+
+        if (!res.ok) return null;
+
+        lastEtag = res.headers.get("ETag");  // update ETag
+        return await res.json();
+    } catch (err) {
+        console.error("fetchJSON error:", err);
         return null;
     }
 }
+
 
 let importantGuilds = new Set([]);
 
@@ -345,36 +362,16 @@ function renderGuilds(guildsByLetter) {
     });
 }
 
-// Live update every 10 seconds
-/* async function liveUpdate() {
+async function liveUpdate() {
     try {
-        const data = await fetchJSON("/importantguilds/") || [];
-        importantGuilds = new Set(data);
-        await loadData();
-    } catch (err) {
-        console.error("Live update error:", err);
-    } finally {
-        setTimeout(liveUpdate, 10000);
-    }
-} */
+        const important = await fetchJSON("/importantguilds/") || [];
+        importantGuilds = new Set(important);
 
-async function setupSSE() {
-    const evtSource = new EventSource("/stream/data/");
-
-    evtSource.onmessage = async function(event) {
-        try {
-            const payload = JSON.parse(event.data);
-            console.log(payload)
-
-            // Update important guilds if included
-            const cacheData = payload.data || {};
-            if (payload.important_guilds) {
-                importantGuilds = new Set(payload.important_guilds);
-            }
-
-            // Convert server data into groups
+        const data = await fetchJSON("/data/");
+        if (data) {
+            // only runs if new data (ETag changed)
             const groups = [];
-            Object.entries(cacheData).forEach(([tier, teams]) => {
+            Object.entries(data).forEach(([tier, teams]) => {
                 if (!Number.isInteger(parseInt(tier))) return;
 
                 teams.forEach(team => {
@@ -391,22 +388,20 @@ async function setupSSE() {
 
             renderGroups(groups);
             await updateQoQHeader();
-
-        } catch (err) {
-            console.error("Error parsing SSE data:", err);
         }
-    };
-
-    evtSource.onerror = function(err) {
-        console.error("SSE connection error:", err);
-    };
+    } catch (err) {
+        console.error("Live update error:", err);
+    } finally {
+        setTimeout(liveUpdate, 10000); // poll every 10s (adjust if needed)
+    }
 }
+
+
 
 // Initial setup
 renderTierLabels();
 updateQoQHeader();
-setupSSE();
-//liveUpdate();
+liveUpdate();
 </script>
 </body>
 </html>

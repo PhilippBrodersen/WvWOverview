@@ -12,8 +12,12 @@ from asyncio import get_running_loop
 import tasks
 import json
 from fastapi.responses import JSONResponse
+from fastapi import FastAPI, Request, Response
+from fastapi.responses import JSONResponse
+import hashlib, json
 from pathlib import Path
-from fastapi.responses import StreamingResponse
+
+app = FastAPI()
 
 IMPORTANT_GUILD_PATH = Path(__file__).parent / "guilds.txt"
 
@@ -54,60 +58,17 @@ async def get_alliance_team():
     return team or {"error": "Guild not found"}
 
 @app.get("/data/")
-async def get_data():
-    if tasks.CACHE is None:
-        return {}
-    #return JSONResponse(content=tasks.CACHE)
-    return tasks.CACHE
+async def get_data_endpoint(request: Request):
+    payload = tasks.CACHE
+    # Create ETag (can also just use last_updated timestamp instead of hash)
+    etag_value = hashlib.md5(json.dumps(payload, sort_keys=True).encode()).hexdigest()
 
-async def event_generator():
-    last_cache = None
-    last_guilds = None
+    # Check if client already has this version
+    if request.headers.get("if-none-match") == etag_value:
+        return Response(status_code=304)
 
-    def make_message(cache, guilds):
-        # Ensure cache is a dict
-        if isinstance(cache, str):
-            try:
-                cache = json.loads(cache)
-            except Exception:
-                cache = {}
-        elif not isinstance(cache, dict):
-            cache = {}
-        return {
-            "data": cache,
-            "important_guilds": guilds
-        }
-
-    # Initial message
-    message = make_message(tasks.CACHE, read_important_guilds())
-    last_cache = message["data"]
-    last_guilds = message["important_guilds"]
-    yield f"data: {json.dumps(message)}\n\n"
-
-    while True:
-        try:
-            await asyncio.wait_for(tasks.cache_update_event.wait(), timeout=20.0)
-            current_cache = tasks.CACHE
-            current_guilds = read_important_guilds()
-
-            message = make_message(current_cache, current_guilds)
-            if message["data"] != last_cache or message["important_guilds"] != last_guilds:
-                yield f"data: {json.dumps(message)}\n\n"
-                last_cache = message["data"]
-                last_guilds = message["important_guilds"]
-
-            tasks.cache_update_event.clear()
-
-        except asyncio.TimeoutError:
-            yield ": keep-alive\n\n"
-
-@app.get("/stream/data/")
-async def stream_data():
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-        },
+    # Otherwise return fresh data with ETag
+    return JSONResponse(
+        content=payload,
+        headers={"ETag": etag_value}
     )
