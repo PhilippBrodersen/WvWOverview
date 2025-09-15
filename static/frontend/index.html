@@ -364,10 +364,13 @@ function renderGuilds(guildsByLetter) {
 
 async function liveUpdate() {
     try {
+        const start = performance.now();
         const important = await fetchJSON("/importantguilds/") || [];
         importantGuilds = new Set(important);
 
         const data = await fetchJSON("/data/");
+        const end = performance.now();
+        console.log(`Time elapsed: ${end - start}ms`);
         if (data) {
             // only runs if new data (ETag changed)
             const groups = [];
