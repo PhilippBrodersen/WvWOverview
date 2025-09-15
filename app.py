@@ -1,22 +1,20 @@
-import asyncio
-import httpx
-from fastapi import FastAPI
-from database import one_time_update,get_matchup_hierarchy,get_team_for_guild_name,get_all_guilds_for_team, init_db, add_guild, get_guild_info, get_team_for_guild, get_all_matchups, get_team_name, get_guilds_for_team
-from typing import Dict, Any
-from tasks import update_teams, scheduler
-from fastapi.middleware.cors import CORSMiddleware
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+import hashlib
+import json
 import os
 from asyncio import get_running_loop
-import tasks
-import json
-from fastapi.responses import JSONResponse
-from fastapi import FastAPI, Request, Response
-from fastapi.responses import JSONResponse
-import hashlib, json
 from pathlib import Path
+
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+
+import tasks
+from database import (
+    get_team_for_guild_name,
+    init_db,
+)
+from tasks import scheduler
 
 app = FastAPI()
 app.add_middleware(GZipMiddleware, minimum_size=500)

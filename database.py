@@ -300,7 +300,6 @@ async def get_guild_info(guild_id: str) -> Optional[Dict[str, Any]]:
         row = await cur.fetchone()
         return row
 
-# 1️⃣ Get all guild IDs belonging to a team
 async def get_guilds_for_team(team_id: str) -> list[str]:
     async with get_async_connection() as db:
         cur = await db.execute(
@@ -310,7 +309,6 @@ async def get_guilds_for_team(team_id: str) -> list[str]:
         rows = await cur.fetchall()
         return [row[0] for row in rows]
 
-# 2️⃣ Get the team ID a guild belongs to
 async def get_team_for_guild(guild_id: str) -> Optional[str]:
     async with get_async_connection() as db:
         cur = await db.execute(
