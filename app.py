@@ -16,12 +16,12 @@ from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 import hashlib, json
 from pathlib import Path
+from fastapi.middleware.gzip import GZipMiddleware
 
 app = FastAPI()
+app.add_middleware(GZipMiddleware, minimum_size=500)
 
 IMPORTANT_GUILD_PATH = Path(__file__).parent / "guilds.txt"
-
-app = FastAPI()
 
 app.mount("/static", StaticFiles(directory="static/frontend", html=True), name="frontend")
 
