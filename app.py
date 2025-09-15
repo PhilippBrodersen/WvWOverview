@@ -86,7 +86,7 @@ async def event_generator():
 
     while True:
         try:
-            await asyncio.wait_for(tasks.cache_update_event.wait(), timeout=60.0)
+            await asyncio.wait_for(tasks.cache_update_event.wait(), timeout=20.0)
             current_cache = tasks.CACHE
             current_guilds = read_important_guilds()
 
@@ -103,4 +103,11 @@ async def event_generator():
 
 @app.get("/stream/data/")
 async def stream_data():
-    return StreamingResponse(event_generator(), media_type="text/event-stream")
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
