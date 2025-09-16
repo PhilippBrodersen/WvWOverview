@@ -2,12 +2,10 @@ use anyhow::Result;
 use axum::{
     http::StatusCode,
     response::IntoResponse,
-    routing::{get, post},
-    Json, Router,
+    Json,
 };
 use serde::{Deserialize, Serialize};
-use sqlx::{migrate::Migrator, FromRow, SqlitePool};
-use std::{net::SocketAddr, sync::Arc};
+use sqlx::SqlitePool;
 
 mod gw2api;
 

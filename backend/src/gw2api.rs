@@ -1,5 +1,7 @@
 use reqwest::Client;
+use serde::Deserialize;
 use serde_json::{Map, Value};
+use std::collections::HashMap;
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::sync::Semaphore;
@@ -37,73 +39,81 @@ async fn fetch_json(url: &str) -> Value {
     data
 }
 
-/// Fetch all WvW guilds (just IDs)
-pub async fn fetch_all_wvw_guilds() -> Value {
-    fetch_json(&format!("{}/wvw/guilds/eu", API_BASE)).await
+enum Tier {
+    One,
+    Two,
+    Three,
+    Four,
+    Five,
 }
 
-/// Fetch detailed guild info
-pub async fn fetch_guild_info(guild_id: &str) -> Value {
-    fetch_json(&format!("{}/guild/{}", API_BASE, guild_id)).await
-}
-
-/// Test: fetch all guilds and then details
-pub async fn fetch_all_wvw_guilds_test() -> Vec<Value> {
-    let data = fetch_all_wvw_guilds().await;
-    let mut guilds: Vec<Value> = Vec::new();
-
-    if let Some(obj) = data.as_object() {
-        for guild_id in obj.keys() {
-            let guild = fetch_guild_info(guild_id).await;
-            guilds.push(guild);
+impl Tier {
+    fn as_str(&self) -> &str {
+        match self {
+            Tier::One => "1",
+            Tier::Two => "2",
+            Tier::Three => "3",
+            Tier::Four => "4",
+            Tier::Five => "5",
         }
     }
-    guilds
 }
 
-/// Fetch a match by tier
-pub async fn fetch_match(tier: u32) -> Value {
-    let data = fetch_json(&format!("{}/wvw/matches/2-{}", API_BASE, tier)).await;
-
-    fn normalize_team_id(team_id: i64) -> String {
-        let mut tid = team_id;
-        if tid == 2101 {
-            tid = 2015;
-        }
-        format!("1{}", tid)
-    }
-
-    if data.is_null() {
-        return Value::Null;
-    }
-
-    let mut match_info = Map::new();
-    if let (Some(worlds), Some(points)) = (data.get("worlds"), data.get("victory_points")) {
-        for color in ["red", "blue", "green"] {
-            let team_id = worlds[color].as_i64().unwrap_or(0);
-            let score = points[color].as_i64().unwrap_or(0);
-
-            let mut team_map = Map::new();
-            team_map.insert(
-                "team_id".to_string(),
-                Value::String(normalize_team_id(team_id)),
-            );
-            team_map.insert("score".to_string(), Value::Number(score.into()));
-
-            match_info.insert(color.to_string(), Value::Object(team_map));
-        }
-    }
-
-    let result = Value::Object(match_info);
-    println!("{}", result);
-    result
+// Enum for the three team colors
+#[derive(Debug, Eq, PartialEq, Hash, Deserialize)]
+#[serde(rename_all = "lowercase")] // maps "red" -> Team::Red
+enum TeamColor {
+    Red,
+    Green,
+    Blue,
 }
 
-#[tokio::main]
-async fn main() {
-    let guilds = fetch_all_wvw_guilds().await;
-    println!("Guild IDs: {}", guilds);
+// Struct for just the fields you care about
+#[derive(Debug, Deserialize)]
+struct Match {
+    worlds: HashMap<TeamColor, String>,
+    victory_points: HashMap<TeamColor, String>,
+}
 
-    let match_info = fetch_match(1).await;
-    println!("Match Info: {}", match_info);
+#[derive(serde::Deserialize)]
+struct Guild {
+    id: String,
+    name: String,
+    tag: String,
+}
+
+struct Team {
+    id: String,
+    guilds: Vec<Guild>,
+    score: String
+}
+
+pub async fn fetch_all_wvw_guild_ids() -> Result<HashMap<String, String>, reqwest::Error> {
+    let url = &format!("{}/wvw/guilds/eu", API_BASE);
+
+    let map: HashMap<String, String> = reqwest::get(url)
+        .await?
+        .json::<HashMap<String, String>>()
+        .await?;
+    return Ok(map)
+}
+
+pub async fn fetch_guild_info(guild_id: &str) -> Result<Guild, reqwest::Error> {
+    let url = &format!("{}/guild/{}", API_BASE, guild_id);
+
+    let guild: Guild = reqwest::get(url)
+        .await?
+        .json::<Guild>()
+        .await?;
+    return Ok(guild)
+}
+
+pub async fn fetch_match(tier: Tier) -> Result<Match, reqwest::Error> {
+    let url = &format!("{}/wvw/matches/2{}", API_BASE, tier.as_str());
+
+    let m: Match = reqwest::get(url)
+        .await?
+        .json::<Match>()
+        .await?;
+    return Ok(m)
 }
