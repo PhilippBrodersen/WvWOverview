@@ -1,7 +1,6 @@
 import asyncio
 import httpx
 from database import init_db, add_guild
-from typing import Dict, Any
 from typing import Dict, Any, Optional
 
 # Lazy semaphore, created in the running loop
@@ -17,14 +16,17 @@ def get_semaphore():
 
 semaphore = asyncio.Semaphore(1)
 async def fetch_json(url: str) -> dict:
-    sem = get_semaphore()
-    async with sem:
-        async with httpx.AsyncClient() as client:
-            resp = await client.get(url, timeout=10.0)
-            resp.raise_for_status()
-            data = resp.json()
-            await asyncio.sleep(0.21)  # enforce ≥0.2s between requests
-            return data
+    try:
+        sem = get_semaphore()
+        async with sem:
+            async with httpx.AsyncClient() as client:
+                resp = await client.get(url, timeout=10.0)
+                resp.raise_for_status()
+                data = resp.json()
+                await asyncio.sleep(0.21)  # enforce ≥0.2s between requests
+                return data
+    except Exception:
+        return {}
 
 async def fetch_all_wvw_guilds_test() -> list:
     data = await fetch_json("https://api.guildwars2.com/v2/wvw/guilds/eu")
