@@ -1,36 +1,35 @@
-use std::{clone, error::Error, fmt};
-
-use serde::{de::DeserializeOwned, Serialize};
+use std::{error::Error, fmt};
+use serde::de::DeserializeOwned;
 use serde_json::Value;
 use sqlx::FromRow;
-use tokio::{fs::OpenOptions, io::AsyncWriteExt, sync::mpsc};
 use std::fmt::Debug;
+use tokio::{fs::OpenOptions, io::AsyncWriteExt, sync::mpsc::{self, Sender}};
+use tokio::sync::{oneshot};
 
 use crate::database::add_guild;
 
 #[derive(Debug)]
-pub enum ProcessingError {
+pub enum TaskError {
     DeserializationError(String),
-    DatabaseError(sqlx::Error)
+    DatabaseError(sqlx::Error),
 }
 
-impl fmt::Display for ProcessingError {
+impl fmt::Display for TaskError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ProcessingError::DeserializationError(msg) => write!(f, "Not Found Error: {}", msg),
-            ProcessingError::DatabaseError(err) => write!(f, "IO Error: {}", err),
+            TaskError::DeserializationError(msg) => write!(f, "Not Found Error: {msg}"),
+            TaskError::DatabaseError(err) => write!(f, "IO Error: {err}"),
         }
     }
 }
 
-impl Error for ProcessingError {
+impl Error for TaskError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
-            ProcessingError::DatabaseError(err) => Some(err),
+            TaskError::DatabaseError(err) => Some(err),
             _ => None,
         }
     }
-    
 }
 
 pub trait ErrorHandler {
@@ -54,67 +53,62 @@ where
     T: DeserializeOwned,
 {
     fn from_value(value: Value) -> Option<Self> {
-        serde_json::from_value(value).map_err(|e| {
-            log_error(e)
-        }).ok()
-       
+        serde_json::from_value(value).map_err(|e| log_error(e)).ok()
     }
 }
 
-
 async fn log_error<E: Debug>(err: E) {
-    let debug_str = format!("{:?}\n", err);
+    let debug_str = format!("{err:?}\n");
 
-    if let Ok(mut file) = OpenOptions::new() 
+    if let Ok(mut file) = OpenOptions::new()
         .create(true)
         .append(true)
         .open("error.log")
         .await
     {
         if let Err(e) = file.write_all(debug_str.as_bytes()).await {
-            eprintln!("Failed to write to log file: {:?}", e);
+            eprintln!("Failed to write to log file: {e:?}");
         }
     } else {
         eprintln!("Failed to open error.log");
     }
 }
 
-
+trait deserializeable {}
 
 #[derive(serde::Deserialize, Debug, FromRow, Clone)]
 pub struct Guild {
     pub(crate) id: String,
     pub(crate) name: String,
     pub(crate) tag: String,
-    pub(crate) normalized_first_letter: String
+    pub(crate) normalized_first_letter: String,
 }
 
-
-
-
-
+impl deserializeable for Guild {
+    
+}
 
 pub enum DataProcessing {
     Deserialize(Deserialize),
-    SaveToDB(SaveToDB)
+    SaveToDB(SaveToDB),
 }
 
 pub enum Deserialize {
-    Guild(Value)
+    Guild(Value),
 }
 
 pub enum SaveToDB {
-    Guild(Guild)
+    Guild(Guild),
 }
 
-impl SaveToDB {
-    pub async fn save_to_db(self) {
-        let result = match self {
-            SaveToDB::Guild(guild) => add_guild(guild).await,
-        };
+pub enum Task {
+    Deserialize { json: serde_json::Value },
+    SaveGuild { guild: Guild },
+}
 
-        //do something with the error
-    }
+pub struct Job<R> {
+    pub task: Task,
+    pub respond_to: oneshot::Sender<Result<R, TaskError>>,
 }
 
 pub struct ProcessingQueue {
@@ -125,28 +119,25 @@ impl ProcessingQueue {
     pub fn new(buffer: usize) -> Self {
         let (tx, mut rx) = mpsc::channel::<DataProcessing>(buffer);
         let tx_clone_for_task = tx.clone();
-        tokio::spawn(async move {         
+        tokio::spawn(async move {
             while let Some(item) = rx.recv().await {
                 let tx_clone = tx_clone_for_task.clone();
-                //let tx_clone = tx.clone();
                 tokio::spawn(async move {
-
                     match item {
-                        DataProcessing::Deserialize(deserialize) => {
-                            match deserialize {
-                                Deserialize::Guild(value) => {
-                                    if let Some(guild) = Guild::from_value(value) {
-                                        tx_clone.send(DataProcessing::SaveToDB(SaveToDB::Guild(guild)));
-                                    }
-                                },
-                            };
+                        DataProcessing::Deserialize(deserialize) => match deserialize {
+                            Deserialize::Guild(value) => {
+                                if let Some(guild) = Guild::from_value(value) {                                   
+                                    Self::_enqueue(tx_clone, DataProcessing::SaveToDB(SaveToDB::Guild(guild)));
+                                }
+                                
+                            }
                         },
                         DataProcessing::SaveToDB(save_to_db) => {
                             match save_to_db {
                                 SaveToDB::Guild(guild) => add_guild(guild).await,
                             };
                         }
-                    }
+                    };
                 });
             }
         });
@@ -154,7 +145,13 @@ impl ProcessingQueue {
         Self { sender: tx }
     }
 
+    async fn _enqueue(sender: Sender<DataProcessing>, item: DataProcessing) {
+        if let Err(err) = sender.send(item).await {
+            log_error(err);
+        }
+    }
+
     pub async fn enqueue(&self, item: DataProcessing) {
-        let _ = self.sender.send(item).await;
+        Self::_enqueue(self.sender.clone(), item);
     }
 }

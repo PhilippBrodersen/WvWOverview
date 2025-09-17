@@ -1,18 +1,15 @@
 #![warn(clippy::pedantic)]
 
-
-
-use axum::{
-    http::StatusCode,
-    response::IntoResponse,
-    Json,
-};
+use axum::{http::StatusCode, response::IntoResponse, Json};
 use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
+use crate::task_queue::do_stuff;
+
+mod database;
 mod gw2api;
 mod processing;
-mod database;
+mod task_queue;
 
 #[tokio::main]
 async fn main() -> Result<(), ()> {
@@ -58,6 +55,7 @@ async fn main() -> Result<(), ()> {
     axum::serve(listener, app).await.unwrap();
 
     Ok(()) */
+    do_stuff().await;
     Ok(())
 }
 
@@ -68,13 +66,13 @@ async fn root() -> &'static str {
 
 async fn init_db(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     sqlx::query(
-        r#"
+        r"
         CREATE TABLE IF NOT EXISTS test (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             name TEXT NOT NULL,
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
-        "#,
+        ",
     )
     .execute(pool)
     .await?;
@@ -83,10 +81,10 @@ async fn init_db(pool: &SqlitePool) -> Result<(), sqlx::Error> {
 
 pub async fn add_test_entry(pool: &SqlitePool, name: &str) -> Result<(), sqlx::Error> {
     sqlx::query(
-        r#"
+        r"
         INSERT INTO test (name)
         VALUES (?1)
-        "#,
+        ",
     )
     .bind(name)
     .execute(pool)
