@@ -14,7 +14,6 @@ sqlx = { version = "0.8", features = [
     "sqlite",
     "macros"
 ] }
-anyhow = "1" 
 reqwest = { version = "0.12", features = ["json"] }
 lazy_static = "1.5.0"
 serde_json = "1.0"

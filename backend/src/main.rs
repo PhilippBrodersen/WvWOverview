@@ -1,4 +1,7 @@
-use anyhow::Result;
+#![warn(clippy::pedantic)]
+
+
+
 use axum::{
     http::StatusCode,
     response::IntoResponse,
@@ -8,11 +11,13 @@ use serde::{Deserialize, Serialize};
 use sqlx::SqlitePool;
 
 mod gw2api;
+mod processing;
+mod database;
 
 #[tokio::main]
-async fn main() -> Result<()> {
+async fn main() -> Result<(), ()> {
     // initialize tracing
-    tracing_subscriber::fmt::init();
+    /* tracing_subscriber::fmt::init();
 
     let db_url = "sqlite://mydb.sqlite";
 
@@ -36,7 +41,7 @@ async fn main() -> Result<()> {
         return Err(e.into());
     }
 
-    Ok(())
+    Ok(()) */
 
     /*  // build our application with a route
     let app = Router::new()
@@ -53,6 +58,7 @@ async fn main() -> Result<()> {
     axum::serve(listener, app).await.unwrap();
 
     Ok(()) */
+    Ok(())
 }
 
 // basic handler that responds with a static string
