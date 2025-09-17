@@ -2,3 +2,4 @@ guilds.json
 teams.json
 *.json
 __pycache__/
+backend/target/
