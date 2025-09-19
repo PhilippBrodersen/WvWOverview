@@ -1,7 +1,4 @@
-use std::{
-    fs,
-    path::Path,
-};
+use std::{fs, path::Path};
 
 use chrono::{DateTime, Utc};
 use sqlx::SqlitePool;
@@ -180,7 +177,7 @@ pub async fn upsert_guild_team(
         INSERT INTO guild_team (guild_id, team_id)
         VALUES (?, ?)
         ON CONFLICT(guild_id) DO UPDATE SET team_id = excluded.team_id;
-        "
+        ",
     )
     .bind(guild_id)
     .bind(team_id) // Option<&str> works; NULL if None
@@ -194,13 +191,12 @@ pub async fn upsert_guild_team_null(
     pool: &SqlitePool,
     excluded_guild_ids: Vec<String>,
 ) -> Result<(), sqlx::Error> {
-
     let placeholders = excluded_guild_ids
-    .iter()
-    .enumerate()
-    .map(|(i, _)| format!("?{}", i + 1))
-    .collect::<Vec<_>>()
-    .join(", ");
+        .iter()
+        .enumerate()
+        .map(|(i, _)| format!("?{}", i + 1))
+        .collect::<Vec<_>>()
+        .join(", ");
 
     let query = format!(
         "UPDATE guild_team SET team_id = NULL WHERE guild_id NOT IN ({})",
@@ -270,23 +266,23 @@ pub async fn get_guild_team(
     guild_id: &str,
 ) -> Result<Option<Option<String>>, sqlx::Error> {
     // Returns Some(team_id) if exists, Some(None) if explicitly NULL, None if guild not found
-    let team_id: Option<String> = sqlx::query_scalar(
-        "SELECT team_id FROM guild_team WHERE guild_id = ?",
-    )
-    .bind(guild_id)
-    .fetch_optional(pool)
-    .await?;
+    let team_id: Option<String> =
+        sqlx::query_scalar("SELECT team_id FROM guild_team WHERE guild_id = ?")
+            .bind(guild_id)
+            .fetch_optional(pool)
+            .await?;
 
     Ok(Some(team_id))
 }
 
-pub async fn get_all_guild_teams(pool: &SqlitePool) -> Result<Vec<(String, Option<String>)>, sqlx::Error> {
+pub async fn get_all_guild_teams(
+    pool: &SqlitePool,
+) -> Result<Vec<(String, Option<String>)>, sqlx::Error> {
     // Returns list of (guild_id, Option<team_id>)
-    let rows = sqlx::query_as::<_, (String, Option<String>)>(
-        "SELECT guild_id, team_id FROM guild_team",
-    )
-    .fetch_all(pool)
-    .await?;
+    let rows =
+        sqlx::query_as::<_, (String, Option<String>)>("SELECT guild_id, team_id FROM guild_team")
+            .fetch_all(pool)
+            .await?;
 
     Ok(rows)
 }
@@ -311,7 +307,7 @@ pub async fn get_all_matches(pool: &SqlitePool) -> Result<Vec<Match>, sqlx::Erro
             green_vp,
             blue_vp
         FROM matches
-        "#
+        "#,
     )
     .fetch_all(pool)
     .await?;
@@ -319,15 +315,17 @@ pub async fn get_all_matches(pool: &SqlitePool) -> Result<Vec<Match>, sqlx::Erro
     Ok(m)
 }
 
-
-pub async fn get_guilds_for_team(pool: &SqlitePool, team_id: &str) -> Result<Vec<Guild>, sqlx::Error> {
+pub async fn get_guilds_for_team(
+    pool: &SqlitePool,
+    team_id: &str,
+) -> Result<Vec<Guild>, sqlx::Error> {
     let guilds: Vec<Guild> = sqlx::query_as::<_, Guild>(
         r#"
         SELECT g.id, g.name, g.tag
         FROM guilds g
         JOIN guild_team gt ON gt.guild_id = g.id
         WHERE gt.team_id = ?
-        "#
+        "#,
     )
     .bind(team_id)
     .fetch_all(pool)
@@ -336,14 +334,17 @@ pub async fn get_guilds_for_team(pool: &SqlitePool, team_id: &str) -> Result<Vec
     Ok(guilds)
 }
 
-pub async fn get_team_id_for_guild(pool: &SqlitePool, guild_name: &str) -> Result<Option<String>, sqlx::Error> {
+pub async fn get_team_id_for_guild(
+    pool: &SqlitePool,
+    guild_name: &str,
+) -> Result<Option<String>, sqlx::Error> {
     let team_id: Option<String> = sqlx::query_scalar(
         r#"
         SELECT gt.team_id
         FROM guilds g
         JOIN guild_team gt ON gt.guild_id = g.id
         WHERE g.name = ?
-        "#
+        "#,
     )
     .bind(guild_name)
     .fetch_optional(pool)

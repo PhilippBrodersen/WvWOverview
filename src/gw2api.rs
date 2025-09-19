@@ -20,7 +20,11 @@ fn get_rate_limiter() -> Arc<RateLimiter> {
         .get_or_init(|| {
             Arc::new(RateLimiter {
                 semaphore: Semaphore::new(1),
-                last_request: Mutex::new(Instant::now().checked_sub(Duration::from_millis(200)).unwrap()),
+                last_request: Mutex::new(
+                    Instant::now()
+                        .checked_sub(Duration::from_millis(200))
+                        .unwrap(),
+                ),
                 delay: Duration::from_millis(200),
             })
         })
@@ -50,12 +54,10 @@ pub async fn fetch_guild_info(guild_id: &str) -> Result<Option<Guild>, reqwest::
     let result: Result<Guild, reqwest::Error> = fetch_json::<Guild>(url).await;
 
     match result {
-        Ok(guild) =>  Ok(Some(guild)),
-        Err(_) => {
-            match fetch_json::<Issue>(url).await {
-                Ok(_) => Ok(None),
-                Err(err) => Err(err),
-            }
+        Ok(guild) => Ok(Some(guild)),
+        Err(_) => match fetch_json::<Issue>(url).await {
+            Ok(_) => Ok(None),
+            Err(err) => Err(err),
         },
     }
 }

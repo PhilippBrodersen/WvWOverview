@@ -6,7 +6,7 @@ use sqlx::{prelude::FromRow, sqlite::SqliteRow};
 
 #[derive(Serialize, Deserialize, FromRow)]
 pub struct Issue {
-    pub text: String
+    pub text: String,
 }
 
 #[derive(Serialize, Deserialize, FromRow)]
@@ -18,7 +18,7 @@ pub struct Guild {
 
 impl ToString for Guild {
     fn to_string(&self) -> String {
-       format!("{} [{}]", self.name, self.tag)
+        format!("{} [{}]", self.name, self.tag)
     }
 }
 
@@ -102,7 +102,6 @@ impl ToString for Tier {
     }
 }
 
-
 #[derive(Serialize, Default, Clone)]
 pub struct MatchColor {
     pub team_name: String,
@@ -121,5 +120,5 @@ pub struct MatchData {
 pub struct Data {
     pub matches: BTreeMap<u8, MatchData>,
     pub important_guilds: Vec<String>,
-    pub our_team: String
+    pub our_team: String,
 }
