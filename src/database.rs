@@ -1,6 +1,6 @@
 #![warn(clippy::pedantic)]
 
-use std::{fs, path::Path};
+use std::{env, fs, path::Path};
 
 use chrono::{DateTime, Utc};
 use sqlx::SqlitePool;
@@ -9,6 +9,13 @@ use crate::data::{Guild, Match, Tier};
 
 pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
     let db_path = "mydb.sqlite";
+
+    if let Ok(exe_path) = env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let db_path = Some(exe_dir.join("mydb.sqlite"));
+        }
+    }
+
     let db_url = format!("sqlite://{db_path}");
 
     // Ensure the file exists
