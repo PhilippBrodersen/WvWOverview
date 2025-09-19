@@ -12,7 +12,8 @@ sqlx = { version = "0.8", features = [
     "sqlite",
     "macros"
 ] }
-reqwest = { version = "0.12", features = ["json"] }
+reqwest = { version = "0.12", default-features = false, features = ["rustls-tls", "json"] }
+
 serde_json = "1.0"
 chrono = "0.4.42"
 futures = "0.3.31"
