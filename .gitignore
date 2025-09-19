@@ -1,4 +1,6 @@
 .vscode/
 target/
+target/debug/
+target/release/
 legacy/backend/target
 *sqlitegit
