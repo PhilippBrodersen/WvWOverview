@@ -1,19 +1,22 @@
-use axum::{routing::get, Router};
+#![warn(clippy::pedantic)]
 
-use crate::{database::init_db, tasks::update_guilds};
+use axum::{Router, routing::get};
 
-mod gw2api;
+use crate::{
+    database::init_db,
+    tasks::{run_guild_updater, run_match_updater, update_guilds},
+};
+
 mod data;
 mod database;
+mod gw2api;
 mod tasks;
-
 
 #[tokio::main]
 async fn main() {
-
-
     let pool = init_db().await.unwrap();
-    update_guilds(&pool).await;
+    run_guild_updater(&pool).await;
+    run_match_updater(&pool).await;
 
     // build our application with a route
     let app = Router::new()

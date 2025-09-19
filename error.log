@@ -114,3 +114,31 @@ Database(SqliteError { code: 1, message: "no such table: main.teams" })
 Database(SqliteError { code: 1, message: "no such table: main.teams" })
 reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 24) }
 Database(SqliteError { code: 1, message: "no such table: main.teams" })
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 24) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 24) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 24) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 24) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 21) }
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 24) }
+Database(SqliteError { code: 787, message: "FOREIGN KEY constraint failed" })
+reqwest::Error { kind: Decode, source: Error("missing field `id`", line: 1, column: 24) }
+Database(SqliteError { code: 787, message: "FOREIGN KEY constraint failed" })
