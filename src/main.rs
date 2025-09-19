@@ -10,12 +10,11 @@ use axum::{
 };
 use tokio::sync::RwLock;
 use tower_http::compression::CompressionLayer;
-use tower_http::services::ServeDir;
 
 use crate::{
     data::Data,
     database::init_db,
-    tasks::{run_guild_updater, run_mateches_cache_updater},
+    tasks::{run_guild_updater, run_match_updater, run_mateches_cache_updater},
 };
 
 mod data;
@@ -28,11 +27,10 @@ const FAVICON_SVG: &str = include_str!("../static/frontend/favicons/swords.svg")
 
 #[tokio::main]
 async fn main() {
-    let frontend_service = ServeDir::new("static/frontend");
     let pool = init_db().await.unwrap();
 
     run_guild_updater(&pool).await;
-    //run_match_updater(&pool).await;
+    run_match_updater(&pool).await;
     let cache: Arc<RwLock<Data>> = Arc::new(RwLock::new(Data::default()));
     run_mateches_cache_updater(&pool, cache.clone()).await;
 

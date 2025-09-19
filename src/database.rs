@@ -2,20 +2,8 @@ use std::{fs, path::Path};
 
 use chrono::{DateTime, Utc};
 use sqlx::SqlitePool;
-use tokio::sync::OnceCell;
 
 use crate::data::{Guild, Match, Tier};
-
-static POOL: OnceCell<SqlitePool> = OnceCell::const_new();
-
-pub async fn get_pool() -> &'static SqlitePool {
-    POOL.get_or_init(|| async {
-        SqlitePool::connect("sqlite://mydb.sqlite")
-            .await
-            .expect("Failed to connect to DB")
-    })
-    .await
-}
 
 pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
     let db_path = "mydb.sqlite";
@@ -101,14 +89,12 @@ pub async fn add_guild(pool: &SqlitePool, guild: Guild) -> Result<(), sqlx::Erro
         .execute(pool)
         .await?;
 
-    upsert_last_updated(pool, &guild.id, Utc::now()).await;
+    upsert_last_updated(pool, &guild.id, Utc::now()).await?;
 
     Ok(())
 }
 
 pub async fn get_guild(pool: &SqlitePool, guild_id: &str) -> Result<Option<Guild>, sqlx::Error> {
-    let pool = get_pool().await;
-
     let guild = sqlx::query_as::<_, Guild>("SELECT id, name, tag FROM guilds WHERE id = ?")
         .bind(guild_id)
         .fetch_optional(pool)

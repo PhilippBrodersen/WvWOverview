@@ -11,7 +11,6 @@ use futures::{StreamExt, stream::FuturesUnordered};
 use phf::phf_map;
 use sqlx::SqlitePool;
 use tokio::{
-    fs,
     sync::RwLock,
     time::{self},
 };
@@ -133,7 +132,6 @@ pub async fn update_guilds(pool: &SqlitePool) {
             return;
         }
     };
-    let guild_ids: Vec<String> = result.keys().cloned().collect();
 
     println!("Looping over ids");
 
@@ -237,16 +235,6 @@ pub async fn run_mateches_cache_updater(pool: &SqlitePool, cache: Arc<RwLock<Dat
             *write_guard = data;
         }
     });
-}
-
-async fn read_lines_into_vec(filename: &str) -> Vec<String> {
-    match fs::read_to_string(filename).await {
-        Ok(content) => content.lines().map(std::string::ToString::to_string).collect(),
-        Err(err) => {
-            log_error(err);
-            vec![]
-        }
-    }
 }
 
 const IMPORTANT_GUILDS: &str = include_str!("../static/important_guilds.txt");
