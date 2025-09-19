@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+
 use reqwest::Error;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};

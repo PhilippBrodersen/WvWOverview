@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+
 use std::{
     collections::{BTreeMap, HashMap},
     fmt,
@@ -20,9 +22,8 @@ use unicode_normalization::char::is_combining_mark;
 use crate::{
     data::{Data, MatchColor, MatchData, Tier},
     database::{
-        add_guild, get_guilds_for_team,
-        get_last_guild_update, get_match, get_team_id_for_guild, guild_exists, upsert_guild_team,
-        upsert_guild_team_null, upsert_match,
+        add_guild, get_guilds_for_team, get_last_guild_update, get_match, get_team_id_for_guild,
+        guild_exists, upsert_guild_team, upsert_guild_team_null, upsert_match,
     },
     gw2api::{fetch_all_wvw_guild_ids, fetch_guild_info, fetch_match},
 };
@@ -87,19 +88,16 @@ pub async fn run_match_updater(pool: &SqlitePool) {
 
 pub async fn update_matches(pool: &SqlitePool) {
     let mut tasks = FuturesUnordered::new();
-    println!("updating matches");
     for tier in Tier::all() {
         let pool: sqlx::Pool<sqlx::Sqlite> = pool.clone();
         tasks.push(tokio::spawn(async move {
             match fetch_match(tier).await {
                 Ok(m) => {
                     if let Err(err) = upsert_match(&pool, &m).await {
-                        println!("AAAAAA");
                         log_error(err);
                     }
                 }
                 Err(err) => {
-                    println!("BBBBB");
                     log_error(err);
                 }
             }
@@ -123,7 +121,6 @@ pub async fn run_guild_updater(pool: &SqlitePool) {
 
 pub async fn update_guilds(pool: &SqlitePool) {
     let mut tasks = FuturesUnordered::new();
-    println!("HI");
 
     let result: HashMap<String, String> = match fetch_all_wvw_guild_ids().await {
         Ok(ids) => ids,
@@ -133,20 +130,16 @@ pub async fn update_guilds(pool: &SqlitePool) {
         }
     };
 
-    println!("Looping over ids");
-
     for (guild_id, team_id) in result.clone() {
         let pool: sqlx::Pool<sqlx::Sqlite> = pool.clone();
         tasks.push(tokio::spawn(async move {
             let exists = guild_exists(&pool, &guild_id).await.unwrap_or_else(|err| {
-                println!("1");
                 log_error(err);
                 false
             });
             let last_update = get_last_guild_update(&pool, &guild_id)
                 .await
                 .unwrap_or_else(|err| {
-                    println!("2");
                     log_error(err);
                     None
                 });
@@ -158,19 +151,16 @@ pub async fn update_guilds(pool: &SqlitePool) {
                             if let Err(err) =
                                 upsert_guild_team(&pool, &guild_id, Some(&team_id)).await
                             {
-                                println!("3");
                                 log_error(err);
                             }
                         }
                         Err(err) => {
-                            println!("4");
                             log_error(err);
                         }
                     },
                     Ok(None) => {}
                     Err(err) => {
                         log_error(err);
-                        println!("5");
                     }
                 }
             }
@@ -246,7 +236,10 @@ pub async fn build_data(pool: &SqlitePool) -> Data {
         .unwrap_or("0".to_string());
     Data {
         matches: build_all_matches(pool).await,
-        important_guilds: IMPORTANT_GUILDS.lines().map(std::string::ToString::to_string).collect(),
+        important_guilds: IMPORTANT_GUILDS
+            .lines()
+            .map(std::string::ToString::to_string)
+            .collect(),
         our_team: TEAM_NAMES
             .get(&team_id)
             .map_or("Unknown".to_string(), |name| (*name).to_string()),

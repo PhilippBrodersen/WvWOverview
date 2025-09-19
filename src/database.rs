@@ -1,3 +1,5 @@
+#![warn(clippy::pedantic)]
+
 use std::{fs, path::Path};
 
 use chrono::{DateTime, Utc};
@@ -184,9 +186,8 @@ pub async fn upsert_guild_team_null(
         .collect::<Vec<_>>()
         .join(", ");
 
-    let query = format!(
-        "UPDATE guild_team SET team_id = NULL WHERE guild_id NOT IN ({placeholders})"
-    );
+    let query =
+        format!("UPDATE guild_team SET team_id = NULL WHERE guild_id NOT IN ({placeholders})");
 
     let mut q = sqlx::query(&query);
     for id in &excluded_guild_ids {

@@ -47,7 +47,7 @@ pub struct Match {
 
 impl<'r> FromRow<'r, SqliteRow> for Match {
     fn from_row(row: &'r SqliteRow) -> Result<Self, sqlx::Error> {
-        Ok(Match {
+        Ok(Self {
             id: row.try_get("id")?,
             start_time: row.try_get("start_time")?,
             end_time: row.try_get("end_time")?,
@@ -77,27 +77,27 @@ pub enum Tier {
 impl Tier {
     pub fn as_id(&self) -> String {
         match self {
-            Tier::One => "2-1".to_string(),
-            Tier::Two => "2-2".to_string(),
-            Tier::Three => "2-3".to_string(),
-            Tier::Four => "2-4".to_string(),
-            Tier::Five => "2-5".to_string(),
+            Self::One => "2-1".to_string(),
+            Self::Two => "2-2".to_string(),
+            Self::Three => "2-3".to_string(),
+            Self::Four => "2-4".to_string(),
+            Self::Five => "2-5".to_string(),
         }
     }
 
-    pub fn all() -> Vec<Tier> {
-        vec![Tier::One, Tier::Two, Tier::Three, Tier::Four, Tier::Five]
+    pub fn all() -> Vec<Self> {
+        vec![Self::One, Self::Two, Self::Three, Self::Four, Self::Five]
     }
 }
 
 impl ToString for Tier {
     fn to_string(&self) -> String {
         match self {
-            Tier::One => "1".to_string(),
-            Tier::Two => "2".to_string(),
-            Tier::Three => "3".to_string(),
-            Tier::Four => "4".to_string(),
-            Tier::Five => "5".to_string(),
+            Self::One => "1".to_string(),
+            Self::Two => "2".to_string(),
+            Self::Three => "3".to_string(),
+            Self::Four => "4".to_string(),
+            Self::Five => "5".to_string(),
         }
     }
 }
