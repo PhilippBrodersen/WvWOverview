@@ -1,3 +1,4 @@
 .vscode/
 target/
-*sqlite
+legacy/backend/target
+*sqlitegit
