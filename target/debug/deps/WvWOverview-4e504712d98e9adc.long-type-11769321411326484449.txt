@@ -1,1 +1,0 @@
-for<'a> Router<Arc<tokio::sync::RwLock<AllMatches>>>: tower_service::Service<IncomingStream<'a, tokio::net::TcpListener>>

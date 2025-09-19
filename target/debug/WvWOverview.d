@@ -1,1 +1,0 @@
-/home/p/WvWOverview/target/debug/WvWOverview: /home/p/WvWOverview/src/data.rs /home/p/WvWOverview/src/database.rs /home/p/WvWOverview/src/gw2api.rs /home/p/WvWOverview/src/main.rs /home/p/WvWOverview/src/tasks.rs /home/p/WvWOverview/static/frontend/favicons/swords.svg /home/p/WvWOverview/static/frontend/index.html /home/p/WvWOverview/static/important_guilds.txt

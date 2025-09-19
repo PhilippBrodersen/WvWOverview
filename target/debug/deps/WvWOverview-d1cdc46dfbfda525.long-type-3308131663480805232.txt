@@ -1,2 +1,0 @@
-fn(State<Arc<{type error}, {type error}>>) -> impl futures::Future<Output = {type error}> {index}
-fn(State<Arc<{type error}, {type error}>>) -> impl futures::Future<Output = {type error}> {index}: Handler<_, _>
