@@ -1,8 +1,0 @@
-/home/p/WvWOverview/backend/target/debug/deps/libtracing_log-a95219350deaf20b.rmeta: /home/p/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tracing-log-0.2.0/src/lib.rs /home/p/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tracing-log-0.2.0/src/log_tracer.rs
-
-/home/p/WvWOverview/backend/target/debug/deps/libtracing_log-a95219350deaf20b.rlib: /home/p/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tracing-log-0.2.0/src/lib.rs /home/p/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tracing-log-0.2.0/src/log_tracer.rs
-
-/home/p/WvWOverview/backend/target/debug/deps/tracing_log-a95219350deaf20b.d: /home/p/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tracing-log-0.2.0/src/lib.rs /home/p/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tracing-log-0.2.0/src/log_tracer.rs
-
-/home/p/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tracing-log-0.2.0/src/lib.rs:
-/home/p/.cargo/registry/src/index.crates.io-6f17d22bba15001f/tracing-log-0.2.0/src/log_tracer.rs:
