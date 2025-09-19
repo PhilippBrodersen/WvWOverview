@@ -1,9 +1,2 @@
-guilds.json
-teams.json
-*.json
-__pycache__/
-backend/target/
-
-# Added by cargo
-
-/target
+.vscode/
+*sqlite

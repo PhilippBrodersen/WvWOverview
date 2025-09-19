@@ -1,15 +1,11 @@
-use futures::StreamExt;
-use futures::stream::{self, iter};
 use reqwest::Error;
-use std::cell::OnceCell;
 use std::collections::HashMap;
-use std::sync::{Arc, Once, OnceLock};
+use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
-use tokio::sync::{Mutex, Semaphore, mpsc};
+use tokio::sync::{Mutex, Semaphore};
 use tokio::time::sleep;
 
-use crate::data::{Guild, Match, Tier};
-use crate::database::add_guild;
+use crate::data::{Guild, Issue, Match, Tier};
 
 struct RateLimiter {
     semaphore: Semaphore,
@@ -24,7 +20,7 @@ fn get_rate_limiter() -> Arc<RateLimiter> {
         .get_or_init(|| {
             Arc::new(RateLimiter {
                 semaphore: Semaphore::new(1),
-                last_request: Mutex::new(Instant::now() - Duration::from_millis(200)),
+                last_request: Mutex::new(Instant::now().checked_sub(Duration::from_millis(200)).unwrap()),
                 delay: Duration::from_millis(200),
             })
         })
@@ -48,11 +44,20 @@ pub async fn fetch_all_wvw_guild_ids() -> Result<HashMap<String, String>, Error>
     fetch_json("https://api.guildwars2.com/v2/wvw/guilds/eu").await
 }
 
-pub async fn fetch_guild_info(guild_id: &str) -> Result<Guild, reqwest::Error> {
+pub async fn fetch_guild_info(guild_id: &str) -> Result<Option<Guild>, reqwest::Error> {
     let url = &format!("https://api.guildwars2.com/v2/guild/{guild_id}");
 
-    let guild: Guild = fetch_json(url).await?;
-    Ok(guild)
+    let result: Result<Guild, reqwest::Error> = fetch_json::<Guild>(url).await;
+
+    match result {
+        Ok(guild) =>  Ok(Some(guild)),
+        Err(_) => {
+            match fetch_json::<Issue>(url).await {
+                Ok(_) => Ok(None),
+                Err(err) => Err(err),
+            }
+        },
+    }
 }
 
 pub async fn fetch_match(tier: Tier) -> Result<Match, reqwest::Error> {

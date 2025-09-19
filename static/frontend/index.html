@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<link rel="icon" href="/static/favicons/swords.svg" type="image/svg+xml">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>WvW Team Viewer</title>
@@ -225,49 +225,56 @@ async function fetchJSON(url) {
 
 
 let importantGuilds = new Set([]);
+let ourTeam = "Unknown"
 
-async function fetchMatches() { return await fetchJSON("/matches/") || []; }
-async function fetchTeamName(teamId) {
-    const data = await fetchJSON(`/team/name/${teamId}`);
-    return data?.name || `Team ${teamId}`;
-}
-async function fetchGuildsForTeam(teamId) { return await fetchJSON(`/team/guilds/${teamId}`) || []; }
-async function fetchQoQTeam() {
-    const data = await fetchJSON("/QoQ/");
-    return data?.team_name || data?.name || null;
+async function fetchData() { 
+    const data = await fetchJSON("/data/"); 
+    return data || { matches: {}, important_guilds: [], our_team: null }; 
 }
 
 async function updateQoQHeader() {
-    const teamName = await fetchQoQTeam();
     const header = document.getElementById("mainTitle");
-    header.textContent = teamName ? `Quality Ôver Quantity is on ${teamName}` : "Select a Team";
+    header.textContent = ourTeam ? `Quality Ôver Quantity is on ${ourTeam}` : `Quality Ôver Quantity is not an any Team :(`;
 }
 
 async function loadData() {
-    const data = await fetchJSON("/data/"); // single request
+   const data = await fetchJSON("/data/"); 
     if (!data) return;
 
+    importantGuilds = new Set(data.important_guilds);
+    ourTeam = data.our_team;
+
     const groups = [];
-    Object.entries(data).forEach(([tier, teams]) => {
-        // skip non-tier keys like QoQ if present
-        console.log(tier)
-        console.log(teams)
-        teams.forEach(team => {
+
+
+    for(i=0; i<5; i++) {
+        const match = data.matches[i];
+        console.log(match);
+        const colorMap = {
+            red: match.red,
+            green: match.green,
+            blue: match.blue
+        };
+
+        Object.entries(colorMap).forEach(([colorKey, colorTeam]) => {
+            if (!colorTeam) return;
+
             groups.push({
-                id: team.team_id,
-                name: team.team_name,
-                score: team.team_score,
-                color: team.team_color,
-                tier: parseInt(tier),
-                guilds: team.guilds  // already split by normalized letter if your view does that
+                id: `${i}-${colorKey}`,
+                name: colorTeam.team_name,
+                score: parseInt(colorTeam.victory_points) || 0,
+                color: colorKey,
+                tier: parseInt(i),
+                guilds: colorTeam.guilds
             });
         });
-    });
-    console.log(groups.length)
+    }
+   
 
     renderGroups(groups);
     await updateQoQHeader();
 }
+
 
 function renderGroups(groups) {
     groupGrid.innerHTML = "";
@@ -350,9 +357,9 @@ function renderGuilds(guildsByLetter) {
         guildsByLetter[letter].forEach(g => {
             const div = document.createElement("div");
             div.className = "guild-item";
-            div.textContent = `${g.guild_name} [${g.guild_tag}]`;
+            div.textContent = `${g}`;
 
-            if (importantGuilds.has(g.guild_name)) {
+            if ([...importantGuilds].some(name => g === name || g.startsWith(name + " "))) {
                 div.classList.add("special");
             }
 
@@ -365,40 +372,14 @@ function renderGuilds(guildsByLetter) {
 
 async function liveUpdate() {
     try {
-        const start = performance.now();
-        const important = await fetchJSON("/importantguilds/") || [];
-        importantGuilds = new Set(important);
-
-        const data = await fetchJSON("/data/");
-        const end = performance.now();
-        console.log(`Time elapsed: ${end - start}ms`);
-        if (data) {
-            // only runs if new data (ETag changed)
-            const groups = [];
-            Object.entries(data).forEach(([tier, teams]) => {
-                if (!Number.isInteger(parseInt(tier))) return;
-
-                teams.forEach(team => {
-                    groups.push({
-                        id: team.team_id,
-                        name: team.team_name,
-                        score: team.team_score,
-                        color: team.team_color,
-                        tier: parseInt(tier),
-                        guilds: team.guilds
-                    });
-                });
-            });
-
-            renderGroups(groups);
-            await updateQoQHeader();
-        }
+        await loadData()
     } catch (err) {
         console.error("Live update error:", err);
     } finally {
-        setTimeout(liveUpdate, 10000); // poll every 10s (adjust if needed)
+        setTimeout(liveUpdate, 10000);
     }
 }
+
 
 
 
