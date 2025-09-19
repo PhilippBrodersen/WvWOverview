@@ -199,8 +199,7 @@ pub async fn upsert_guild_team_null(
         .join(", ");
 
     let query = format!(
-        "UPDATE guild_team SET team_id = NULL WHERE guild_id NOT IN ({})",
-        placeholders
+        "UPDATE guild_team SET team_id = NULL WHERE guild_id NOT IN ({placeholders})"
     );
 
     let mut q = sqlx::query(&query);
@@ -295,7 +294,7 @@ pub async fn get_all_guilds(pool: &SqlitePool) -> Result<Vec<Guild>, sqlx::Error
 
 pub async fn get_all_matches(pool: &SqlitePool) -> Result<Vec<Match>, sqlx::Error> {
     let m = sqlx::query_as::<_, Match>(
-        r#"
+        r"
         SELECT 
             id,
             start_time,
@@ -307,7 +306,7 @@ pub async fn get_all_matches(pool: &SqlitePool) -> Result<Vec<Match>, sqlx::Erro
             green_vp,
             blue_vp
         FROM matches
-        "#,
+        ",
     )
     .fetch_all(pool)
     .await?;
@@ -320,12 +319,12 @@ pub async fn get_guilds_for_team(
     team_id: &str,
 ) -> Result<Vec<Guild>, sqlx::Error> {
     let guilds: Vec<Guild> = sqlx::query_as::<_, Guild>(
-        r#"
+        r"
         SELECT g.id, g.name, g.tag
         FROM guilds g
         JOIN guild_team gt ON gt.guild_id = g.id
         WHERE gt.team_id = ?
-        "#,
+        ",
     )
     .bind(team_id)
     .fetch_all(pool)
@@ -339,12 +338,12 @@ pub async fn get_team_id_for_guild(
     guild_name: &str,
 ) -> Result<Option<String>, sqlx::Error> {
     let team_id: Option<String> = sqlx::query_scalar(
-        r#"
+        r"
         SELECT gt.team_id
         FROM guilds g
         JOIN guild_team gt ON gt.guild_id = g.id
         WHERE g.name = ?
-        "#,
+        ",
     )
     .bind(guild_name)
     .fetch_optional(pool)

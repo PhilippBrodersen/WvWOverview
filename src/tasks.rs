@@ -11,7 +11,7 @@ use futures::{StreamExt, stream::FuturesUnordered};
 use phf::phf_map;
 use sqlx::SqlitePool;
 use tokio::{
-    fs, io,
+    fs,
     sync::RwLock,
     time::{self},
 };
@@ -19,9 +19,9 @@ use unicode_normalization::UnicodeNormalization;
 use unicode_normalization::char::is_combining_mark;
 
 use crate::{
-    data::{Data, Match, MatchColor, MatchData, Tier},
+    data::{Data, MatchColor, MatchData, Tier},
     database::{
-        add_guild, get_all_guild_teams, get_all_matches, get_guilds_for_team,
+        add_guild, get_guilds_for_team,
         get_last_guild_update, get_match, get_team_id_for_guild, guild_exists, upsert_guild_team,
         upsert_guild_team_null, upsert_match,
     },
@@ -156,7 +156,7 @@ pub async fn update_guilds(pool: &SqlitePool) {
             if !exists || last_update.is_none_or(|ts| Utc::now() - ts > Duration::hours(24)) {
                 match fetch_guild_info(&guild_id).await {
                     Ok(Some(guild)) => match add_guild(&pool, guild).await {
-                        Ok(_) => {
+                        Ok(()) => {
                             if let Err(err) =
                                 upsert_guild_team(&pool, &guild_id, Some(&team_id)).await
                             {
@@ -172,7 +172,7 @@ pub async fn update_guilds(pool: &SqlitePool) {
                     Ok(None) => {}
                     Err(err) => {
                         log_error(err);
-                        println!("5")
+                        println!("5");
                     }
                 }
             }
@@ -184,7 +184,7 @@ pub async fn update_guilds(pool: &SqlitePool) {
     while tasks.next().await.is_some() {}
 
     let exclude: Vec<String> = result.keys().cloned().collect();
-    if let Err(err) = upsert_guild_team_null(&pool, exclude).await {
+    if let Err(err) = upsert_guild_team_null(pool, exclude).await {
         log_error(err);
     }
 }
@@ -216,7 +216,7 @@ fn group_guilds(guilds: Vec<String>) -> BTreeMap<char, Vec<String>> {
 
 fn fix_team_ids(s: &str) -> String {
     let a = if s.len() == 4 {
-        format!("1{}", s)
+        format!("1{s}")
     } else {
         s.to_string()
     };
@@ -241,7 +241,7 @@ pub async fn run_mateches_cache_updater(pool: &SqlitePool, cache: Arc<RwLock<Dat
 
 async fn read_lines_into_vec(filename: &str) -> Vec<String> {
     match fs::read_to_string(filename).await {
-        Ok(content) => content.lines().map(|s| s.to_string()).collect(),
+        Ok(content) => content.lines().map(std::string::ToString::to_string).collect(),
         Err(err) => {
             log_error(err);
             vec![]
@@ -252,16 +252,16 @@ async fn read_lines_into_vec(filename: &str) -> Vec<String> {
 const IMPORTANT_GUILDS: &str = include_str!("../static/important_guilds.txt");
 
 pub async fn build_data(pool: &SqlitePool) -> Data {
-    let team_id = get_team_id_for_guild(&pool, "Quality Ôver Quantity")
+    let team_id = get_team_id_for_guild(pool, "Quality Ôver Quantity")
         .await
         .unwrap_or(Some("0".to_string()))
         .unwrap_or("0".to_string());
     Data {
-        matches: build_all_matches(&pool).await,
-        important_guilds: IMPORTANT_GUILDS.lines().map(|l| l.to_string()).collect(),
+        matches: build_all_matches(pool).await,
+        important_guilds: IMPORTANT_GUILDS.lines().map(std::string::ToString::to_string).collect(),
         our_team: TEAM_NAMES
             .get(&team_id)
-            .map_or(format!("Unknown"), |name| name.to_string()),
+            .map_or("Unknown".to_string(), |name| (*name).to_string()),
     }
 }
 
@@ -272,7 +272,7 @@ pub async fn build_all_matches(pool: &SqlitePool) -> BTreeMap<u8, MatchData> {
 
     for i in 0..5 {
         let tier = &tiers[i];
-        if let Some(m) = get_match(&pool, *tier).await.unwrap() {
+        if let Some(m) = get_match(pool, *tier).await.unwrap() {
             let t_id_red = fix_team_ids(&m.worlds.red.to_string());
             let t_id_green = fix_team_ids(&m.worlds.green.to_string());
             let t_id_blue = fix_team_ids(&m.worlds.blue.to_string());
@@ -280,14 +280,14 @@ pub async fn build_all_matches(pool: &SqlitePool) -> BTreeMap<u8, MatchData> {
             let red: MatchColor = MatchColor {
                 team_name: TEAM_NAMES
                     .get(&t_id_red)
-                    .map_or(format!("Red-{i}"), |name| name.to_string()),
+                    .map_or(format!("Red-{i}"), |name| (*name).to_string()),
                 victory_points: m.victory_points.red.to_string(),
                 guilds: group_guilds(
-                    get_guilds_for_team(&pool, &t_id_red)
+                    get_guilds_for_team(pool, &t_id_red)
                         .await
                         .unwrap_or_default()
                         .iter()
-                        .map(|g| g.to_string())
+                        .map(std::string::ToString::to_string)
                         .collect(),
                 ),
             };
@@ -295,14 +295,14 @@ pub async fn build_all_matches(pool: &SqlitePool) -> BTreeMap<u8, MatchData> {
             let green = MatchColor {
                 team_name: TEAM_NAMES
                     .get(&t_id_green)
-                    .map_or(format!("Green-{i}"), |name| name.to_string()),
+                    .map_or(format!("Green-{i}"), |name| (*name).to_string()),
                 victory_points: m.victory_points.green.to_string(),
                 guilds: group_guilds(
-                    get_guilds_for_team(&pool, &t_id_green)
+                    get_guilds_for_team(pool, &t_id_green)
                         .await
                         .unwrap_or_default()
                         .iter()
-                        .map(|g| g.to_string())
+                        .map(std::string::ToString::to_string)
                         .collect(),
                 ),
             };
@@ -310,14 +310,14 @@ pub async fn build_all_matches(pool: &SqlitePool) -> BTreeMap<u8, MatchData> {
             let blue = MatchColor {
                 team_name: TEAM_NAMES
                     .get(&t_id_blue)
-                    .map_or(format!("Blue-{i}"), |name| name.to_string()),
+                    .map_or(format!("Blue-{i}"), |name| (*name).to_string()),
                 victory_points: m.victory_points.blue.to_string(),
                 guilds: group_guilds(
-                    get_guilds_for_team(&pool, &t_id_blue)
+                    get_guilds_for_team(pool, &t_id_blue)
                         .await
                         .unwrap_or_default()
                         .iter()
-                        .map(|g| g.to_string())
+                        .map(std::string::ToString::to_string)
                         .collect(),
                 ),
             };

@@ -8,7 +8,6 @@ use axum::{
     response::{Html, IntoResponse},
     routing::get,
 };
-use sqlx::SqlitePool;
 use tokio::sync::RwLock;
 use tower_http::compression::CompressionLayer;
 use tower_http::services::ServeDir;
@@ -16,7 +15,7 @@ use tower_http::services::ServeDir;
 use crate::{
     data::Data,
     database::init_db,
-    tasks::{build_all_matches, run_guild_updater, run_match_updater, run_mateches_cache_updater},
+    tasks::{run_guild_updater, run_mateches_cache_updater},
 };
 
 mod data;
