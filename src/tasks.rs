@@ -1,11 +1,7 @@
 #![warn(clippy::pedantic)]
 
 use std::{
-    collections::{BTreeMap, HashMap},
-    fmt,
-    fs::OpenOptions,
-    io::Write,
-    sync::Arc,
+    collections::{BTreeMap, HashMap}, env::{self, current_exe}, fmt, fs::OpenOptions, io::Write, path::PathBuf, sync::Arc
 };
 
 use chrono::{Duration, Utc};
@@ -60,17 +56,28 @@ static TEAM_NAMES: phf::Map<&'static str, &'static str> = phf_map! {
 
 fn log_error<E: fmt::Debug>(err: E) {
     let debug_str = format!("{err:?}\n");
-
-    if let Ok(mut file) = OpenOptions::new()
-        .create(true)
-        .append(true)
-        .open("error.log")
-    {
-        if let Err(e) = file.write_all(debug_str.as_bytes()) {
-            eprintln!("Failed to write to log file: {e:?}");
+    let error_path: Option<PathBuf> = None;
+    if let Ok(exe_path) = env::current_exe() {
+        if let Some(exe_dir) = exe_path.parent() {
+            let error_path = Some(exe_dir.join("error.log"));
+            if let Ok(mut file) = OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open("error.log")
+            {
+                if let Err(e) = file.write_all(debug_str.as_bytes()) {
+                    eprintln!("Failed to write to log file: {e:?}");
+                }
+            } else {
+                eprintln!("Failed to open error.log");
+            }
         }
-    } else {
-        eprintln!("Failed to open error.log");
+        else {
+            eprintln!("Failed to open log path");
+        }  
+    }
+    else {
+        eprintln!("Failed to open log path");
     }
 }
 
