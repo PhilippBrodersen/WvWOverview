@@ -224,6 +224,8 @@ async function fetchJSON(url) {
             headers["If-None-Match"] = lastEtag;
         }
 
+        headers["test"] = "test";
+
         const res = await fetch(url, { headers });
 
         if (res.status === 304) {
@@ -285,6 +287,7 @@ async function loadData() {
    
 
     renderGroups(groups);
+    renderTierLabels();
     await updateQoQHeader();
 }
 
@@ -396,7 +399,7 @@ async function liveUpdate() {
 }
 
 
-// Initial setup
+// Initial 
 liveUpdate();
 </script>
 </body>

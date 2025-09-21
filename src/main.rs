@@ -91,6 +91,13 @@ async fn favicon() -> impl IntoResponse {
 }
 
 async fn data(State(cache): State<Arc<RwLock<Data>>>, req: Request<Body>) -> impl IntoResponse {
+    if req.headers().get("test").is_none() {
+        return Response::builder()
+            .status(StatusCode::NOT_FOUND)
+            .body(Body::empty())
+            .unwrap();
+    }
+
     let cloned = cache.read().await.clone();
 
     let mut hasher = DefaultHasher::new();
