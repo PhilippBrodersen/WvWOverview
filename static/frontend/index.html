@@ -26,6 +26,29 @@ h1 {
     color: var(--text-color);
 }
 
+#headerContainer {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+#mainTitle {
+    margin: 0;
+    white-space: nowrap;
+}
+
+#teamQualityWrapper {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+}
+
+#teamQuality {
+    margin: 0;
+    font-weight: bold;
+    white-space: nowrap;
+}
+
 .group-grid {
     display: grid;
     grid-template-rows: repeat(3, auto); 
@@ -158,16 +181,12 @@ h1 {
 </style>
 </head>
 <body>
-<div id="headerContainer" style="display: flex; align-items: center; margin-bottom: 20px;">
-  <h1 id="mainTitle" style="margin: 0; white-space: nowrap;">Select a Team</h1>
-  <div style="flex: 1; display: flex; justify-content: center;">
-    <h1 id="teamQuality" style="margin: 0; font-weight: bold; white-space: nowrap;"></h1>
+<div id="headerContainer">
+  <h1 id="mainTitle"></h1>
+  <div id="teamQualityWrapper">
+    <h1 id="teamQuality"></h1>
   </div>
 </div>
-
-<div id="tierLabels" class="tier-labels"></div>
-<div id="groupGrid" class="group-grid"></div>
-<div id="guildWrapper" class="guild-wrapper"></div>
 
 <div id="tierLabels" class="tier-labels"></div>
 <div id="groupGrid" class="group-grid"></div>
@@ -177,6 +196,8 @@ h1 {
 const groupGrid = document.getElementById("groupGrid");
 const guildWrapper = document.getElementById("guildWrapper");
 const tierLabelsContainer = document.getElementById("tierLabels");
+const mainTitle = document.getElementById("mainTitle");
+const teamQuality = document.getElementById("teamQuality");
 let activeBtnId = null;
 let lastEtag = null;
 
@@ -186,9 +207,6 @@ const COLOR_MAP = {
     green: "#17bf15"
 };
 
-function normalizeLetter(char) {
-    return char.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
-}
 
 function renderTierLabels() {
     tierLabelsContainer.innerHTML = "";
@@ -225,16 +243,12 @@ async function fetchJSON(url) {
 
 
 let importantGuilds = new Set([]);
-let ourTeam = "Unknown"
+let ourTeam = " "; 
 
-async function fetchData() { 
-    const data = await fetchJSON("/data/"); 
-    return data || { matches: {}, important_guilds: [], our_team: null }; 
-}
-
-async function updateQoQHeader() {
-    const header = document.getElementById("mainTitle");
-    header.textContent = ourTeam ? `Quality Ôver Quantity is on ${ourTeam}` : `Quality Ôver Quantity is not an any Team :(`;
+function updateQoQHeader() {
+    mainTitle.textContent = ourTeam
+        ? `Quality Ôver Quantity is on ${ourTeam}`
+        : `Quality Ôver Quantity is not on any team :(`;
 }
 
 async function loadData() {
@@ -247,9 +261,8 @@ async function loadData() {
     const groups = [];
 
 
-    for(i=0; i<5; i++) {
+    for(let i = 0; i < 5; i++) {
         const match = data.matches[i];
-        console.log(match);
         const colorMap = {
             red: match.red,
             green: match.green,
@@ -325,6 +338,7 @@ function renderGroups(groups) {
 
         if (group.id === activeBtnId) {
             btn.classList.add("active");
+            renderGuilds(group.guilds);
         }
 
         fragment.appendChild(btn);
@@ -343,7 +357,7 @@ function renderGroups(groups) {
 
 function renderGuilds(guildsByLetter) {
     guildWrapper.innerHTML = "";
-    console.log(importantGuilds)
+    const fragment = document.createDocumentFragment();
 
     Object.keys(guildsByLetter).forEach(letter => {
         const column = document.createElement("section");
@@ -366,8 +380,9 @@ function renderGuilds(guildsByLetter) {
             column.appendChild(div);
         });
 
-        guildWrapper.appendChild(column);
+        fragment.appendChild(column);
     });
+    guildWrapper.appendChild(fragment);
 }
 
 async function liveUpdate() {
@@ -381,11 +396,7 @@ async function liveUpdate() {
 }
 
 
-
-
 // Initial setup
-renderTierLabels();
-updateQoQHeader();
 liveUpdate();
 </script>
 </body>

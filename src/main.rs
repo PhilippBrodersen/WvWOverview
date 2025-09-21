@@ -3,11 +3,9 @@
 use std::{hash::{DefaultHasher, Hash, Hasher}, sync::Arc};
 
 use axum::{
-    body::Body, extract::State, http::{Request, Response}, response::{Html, IntoResponse}, routing::get, Json, Router
+    body::Body, extract::State, http::{Request, Response}, response::{Html, IntoResponse}, routing::get, Router
 };
-use futures::stream::iter;
 use reqwest::StatusCode;
-use tera::{Context, Tera};
 use tokio::sync::RwLock;
 use tower_http::compression::CompressionLayer;
 
@@ -51,20 +49,26 @@ async fn main() {
     let cache: Arc<RwLock<Data>> = Arc::new(RwLock::new(Data::default()));
     run_mateches_cache_updater(&pool, cache.clone()).await;
 
+    let compression = CompressionLayer::new()
+        .gzip(true)
+        .br(true)
+        .deflate(true)
+        .zstd(true);
+
     let root_route: Router<()> = Router::new()
         .route("/", get(index))
-        .layer(CompressionLayer::new());
+        .layer(compression.clone());
 
     let data_route: Router<()> = Router::new()
         .route("/data/", get(data))
         .with_state(cache.clone())
-        .layer(CompressionLayer::new());
+        .layer(compression.clone());
 
 
     let favicon_route: Router<()> = Router::new()
         .route("/favicon.svg", get(favicon))
         .route("/favicon.ico", get(favicon))
-        .layer(CompressionLayer::new());
+        .layer(compression.clone());
 
     let app = Router::new()
         .merge(root_route)

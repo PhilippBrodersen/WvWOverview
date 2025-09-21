@@ -22,7 +22,7 @@ use unicode_normalization::UnicodeNormalization;
 use unicode_normalization::char::is_combining_mark;
 
 use crate::{
-    data::{Data, Guild, MatchColor, MatchData, Tier},
+    data::{Data, MatchColor, MatchData, Tier},
     database::{
         add_guild, get_guilds_for_team, get_last_guild_update, get_match, get_team_id_for_guild,
         guild_in_db, upsert_guild_team, upsert_guild_team_null, upsert_match,
@@ -243,7 +243,7 @@ pub async fn build_data(pool: &SqlitePool) -> Data {
             .collect(),
         our_team: TEAM_NAMES
             .get(&team_id)
-            .map_or("Unknown".to_string(), |name| (*name).to_string()),
+            .map_or("".to_string(), |name| (*name).to_string()),
     }
 }
 
