@@ -1,18 +1,18 @@
 #![warn(clippy::pedantic)]
 
-use std::sync::Arc;
+use std::{hash::{DefaultHasher, Hash, Hasher}, sync::Arc};
 
 use axum::{
-    Json, Router,
-    extract::State,
-    response::{Html, IntoResponse},
-    routing::get,
+    body::Body, extract::State, http::{Request, Response}, response::{Html, IntoResponse}, routing::get, Json, Router
 };
+use futures::stream::iter;
+use reqwest::StatusCode;
+use tera::{Context, Tera};
 use tokio::sync::RwLock;
 use tower_http::compression::CompressionLayer;
 
 use crate::{
-    data::Data,
+    data::{Data},
     database::init_db,
     tasks::{run_guild_updater, run_match_updater, run_mateches_cache_updater},
 };
@@ -57,8 +57,9 @@ async fn main() {
 
     let data_route: Router<()> = Router::new()
         .route("/data/", get(data))
-        .with_state(cache)
+        .with_state(cache.clone())
         .layer(CompressionLayer::new());
+
 
     let favicon_route: Router<()> = Router::new()
         .route("/favicon.svg", get(favicon))
@@ -85,7 +86,27 @@ async fn favicon() -> impl IntoResponse {
     )
 }
 
-async fn data(State(cache): State<Arc<RwLock<Data>>>) -> Json<Data> {
+async fn data(State(cache): State<Arc<RwLock<Data>>>, req: Request<Body>) -> impl IntoResponse {
     let cloned = cache.read().await.clone();
-    Json(cloned)
+
+    let mut hasher = DefaultHasher::new();
+    cloned.hash(&mut hasher);
+    let etag = format!("\"{:x}\"", hasher.finish());
+
+    if let Some(if_none_match) = req.headers().get("if-none-match")
+        && if_none_match.to_str().unwrap_or("") == etag {
+            // Data hasn't changed, return 304
+            return Response::builder()
+                .status(StatusCode::NOT_MODIFIED)
+                .body(Body::empty())
+                .unwrap();
+        }
+
+    let json = serde_json::to_string(&cloned).unwrap();
+   
+    Response::builder()
+            .header("ETag", etag)
+            .header("Content-Type", "application/json")
+            .body(Body::from(json))
+            .unwrap()
 }

@@ -28,6 +28,7 @@ unicode-normalization = "0.1.24"
 tower-http = { version = "0.6.6", features = ["compression-gzip", "fs"] }
 phf = { version = "0.13.1", features = ["macros"] }
 clap = { version = "4.5", features = ["derive"] }
+tera = "1"
 
 [profile.release]
 opt-level = 3

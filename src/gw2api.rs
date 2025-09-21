@@ -83,3 +83,17 @@ pub async fn fetch_match(tier: Tier) -> Option<Match> {
         }
     }
 }
+
+pub async fn fetch_guild_id_by_name(guild_name: String) -> Option<String> {
+    let url = &format!("https://api.guildwars2.com/v2/guild/search?name={guild_name}");
+
+   let ids: Vec<String> = match fetch_json(url).await {
+        Ok(v) => v,
+        Err(err) => {
+            log_error(err);
+            return None;
+        }
+    };
+
+    ids.into_iter().next()
+}

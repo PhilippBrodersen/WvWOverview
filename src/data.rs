@@ -105,23 +105,24 @@ impl Display for Tier {
     }
 }
 
-#[derive(Serialize, Default, Clone)]
+#[derive(Serialize, Default, Clone, Hash)]
 pub struct MatchColor {
     pub team_name: String,
     pub victory_points: String,
     pub guilds: BTreeMap<char, Vec<String>>,
 }
 
-#[derive(Serialize, Default, Clone)]
+#[derive(Serialize, Default, Clone, Hash)]
 pub struct MatchData {
     pub red: MatchColor,
     pub green: MatchColor,
     pub blue: MatchColor,
 }
 
-#[derive(Serialize, Default, Clone)]
+#[derive(Serialize, Default, Clone, Hash)]
 pub struct Data {
     pub matches: BTreeMap<usize, MatchData>,
     pub important_guilds: Vec<String>,
     pub our_team: String,
 }
+

@@ -22,12 +22,12 @@ use unicode_normalization::UnicodeNormalization;
 use unicode_normalization::char::is_combining_mark;
 
 use crate::{
-    data::{Data, MatchColor, MatchData, Tier},
+    data::{Data, Guild, MatchColor, MatchData, Tier},
     database::{
         add_guild, get_guilds_for_team, get_last_guild_update, get_match, get_team_id_for_guild,
         guild_in_db, upsert_guild_team, upsert_guild_team_null, upsert_match,
     },
-    gw2api::{fetch_all_wvw_guild_ids, fetch_guild_info, fetch_match},
+    gw2api::{fetch_all_wvw_guild_ids, fetch_guild_id_by_name, fetch_guild_info, fetch_match},
 };
 
 static TEAM_NAMES: phf::Map<&'static str, &'static str> = phf_map! {
@@ -132,25 +132,50 @@ pub async fn update_guilds(pool: &SqlitePool) {
 
     let result: HashMap<String, String> = fetch_all_wvw_guild_ids().await.unwrap_or_default();
 
-    for (guild_id, team_id) in result.clone() {
-        let pool: sqlx::Pool<sqlx::Sqlite> = pool.clone();
-        tasks.push(tokio::spawn(async move {
-            let exists = guild_in_db(&pool, &guild_id).await;
-            let last_update = get_last_guild_update(&pool, &guild_id).await;
+    let mut my_guild_group = Vec::new();
+    let mut my_team_group = Vec::new();
+    let mut other_guilds = Vec::new();
 
-            if (!exists || last_update.is_none_or(|ts| Utc::now() - ts > Duration::hours(24)))
-                && let Some(guild) = fetch_guild_info(&guild_id).await
-            {
-                add_guild(&pool, guild).await;
-                upsert_guild_team(&pool, &guild_id, Some(&team_id)).await;
+    if let Some(my_guild_id) = fetch_guild_id_by_name("Quality Ôver Quantity".to_string()).await && let Some(my_team_id) = result.get(&my_guild_id) {
+        for (guild_id, team_id) in &result {
+            let guild_id = guild_id.clone();
+            let team_id = team_id.clone();
+
+            if *guild_id == my_guild_id {
+                my_guild_group.push((guild_id, team_id));
+            } else if team_id == *my_team_id {
+                my_team_group.push((guild_id, team_id));
+            } else {
+                other_guilds.push((guild_id, team_id));
             }
-        }));
+        }
+    }
+
+    for group in [&my_guild_group, &my_team_group, &other_guilds] {
+        for (guild_id, team_id) in group {
+            let pool: sqlx::Pool<sqlx::Sqlite> = pool.clone();
+            let guild_id = guild_id.clone();
+            let team_id = team_id.clone();
+
+            tasks.push(tokio::spawn(async move {
+                let exists = guild_in_db(&pool, &guild_id).await;
+                let last_update = get_last_guild_update(&pool, &guild_id).await;
+
+                if (!exists || last_update.is_none_or(|ts| Utc::now() - ts > Duration::hours(24)))
+                    && let Some(guild) = fetch_guild_info(&guild_id).await
+                {
+                    add_guild(&pool, guild).await;
+                    upsert_guild_team(&pool, &guild_id, Some(&team_id)).await;
+                }
+            }));
+        }
     }
 
     while tasks.next().await.is_some() {}
 
     let exclude: Vec<String> = result.keys().cloned().collect();
     upsert_guild_team_null(pool, exclude).await;
+
 }
 
 fn normalize_name(name: &str) -> String {
@@ -233,16 +258,22 @@ pub async fn build_all_matches(pool: &SqlitePool) -> BTreeMap<usize, MatchData> 
                 fix_team_ids(&m.worlds.blue.to_string()),
             ];
 
+            let vp = [
+                m.victory_points.red,
+                m.victory_points.green,
+                m.victory_points.blue,
+            ];
+
             let mut team = vec![];
 
-            for id in ids {
+            for i in 0..3 {
                 let t = MatchColor {
                     team_name: TEAM_NAMES
-                        .get(&id)
+                        .get(&ids[i])
                         .map_or_else(|| "Unknown".to_string(), |name| (*name).to_string()),
-                    victory_points: m.victory_points.red.to_string(),
+                    victory_points: vp[i].to_string(),
                     guilds: group_guilds(
-                        get_guilds_for_team(pool, &id)
+                        get_guilds_for_team(pool, &ids[i])
                             .await
                             .unwrap_or_default()
                             .iter()
