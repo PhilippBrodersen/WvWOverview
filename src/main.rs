@@ -71,19 +71,10 @@ async fn main() {
         .merge(root_route)
         .merge(data_route)
         .merge(favicon_route);
-    //.nest_service("/", frontend_service);
 
-    /* // build our application with a route
-    let app = Router::new()
-        // `GET /` goes to `root`
-        .route("/", get(root)).with_state(pool).route("/test/", get(data)).with_state(cache); //layer(CompressionLayer::new()); */
-
-    // run our app with hyper, listening globally on port 3000
     let listener = tokio::net::TcpListener::bind(addr).await.unwrap();
     axum::serve(listener, app).await.unwrap();
 }
-
-// basic handler that responds with a static string
 
 async fn index() -> impl IntoResponse {
     Html(INDEX_HTML)
@@ -96,8 +87,7 @@ async fn favicon() -> impl IntoResponse {
     )
 }
 
-async fn data(State(cache): State<Arc<RwLock<Data>>>) -> Json<Data> {
-    let read_guard = cache.read().await;
-    let cloned = read_guard.clone();
+async fn data(State(cache): State<Arc<RwLock<Data>>>) -> Json<Data> {   
+    let cloned = cache.read().await.clone(); 
     Json(cloned)
 }

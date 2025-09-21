@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::fmt::Display;
 
 use serde::{Deserialize, Serialize};
 use sqlx::Row;
@@ -16,9 +17,9 @@ pub struct Guild {
     pub tag: String,
 }
 
-impl ToString for Guild {
-    fn to_string(&self) -> String {
-        format!("{} [{}]", self.name, self.tag)
+impl Display for Guild {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+       write!(f, "{} [{}]", self.name, self.tag)
     }
 }
 
@@ -75,7 +76,7 @@ pub enum Tier {
 }
 
 impl Tier {
-    pub fn as_id(&self) -> String {
+    pub fn as_id(self) -> String {
         match self {
             Self::One => "2-1".to_string(),
             Self::Two => "2-2".to_string(),
@@ -90,15 +91,17 @@ impl Tier {
     }
 }
 
-impl ToString for Tier {
-    fn to_string(&self) -> String {
-        match self {
-            Self::One => "1".to_string(),
-            Self::Two => "2".to_string(),
-            Self::Three => "3".to_string(),
-            Self::Four => "4".to_string(),
-            Self::Five => "5".to_string(),
-        }
+impl Display for Tier {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            Self::One => "1",
+            Self::Two => "2",
+            Self::Three => "3",
+            Self::Four => "4",
+            Self::Five => "5",
+        };
+
+        write!(f, "{s}")
     }
 }
 
@@ -118,7 +121,7 @@ pub struct MatchData {
 
 #[derive(Serialize, Default, Clone)]
 pub struct Data {
-    pub matches: BTreeMap<u8, MatchData>,
+    pub matches: BTreeMap<usize, MatchData>,
     pub important_guilds: Vec<String>,
     pub our_team: String,
 }

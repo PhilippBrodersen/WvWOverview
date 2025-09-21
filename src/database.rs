@@ -1,27 +1,33 @@
 #![warn(clippy::pedantic)]
 
-use std::{env, fs, path::Path};
+/*
+Note: all functions in this file swallow errors by just passing to to log_error
+*/
+
+use std::{env, fs, path::PathBuf};
 
 use chrono::{DateTime, Utc};
-use sqlx::SqlitePool;
+use sqlx::{Sqlite, SqlitePool};
 
-use crate::data::{Guild, Match, Tier};
+use crate::{data::{Guild, Match, Tier}, tasks::log_error};
 
 pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
-    let db_path = "mydb.sqlite";
+    let default_path = "mydb.sqlite";
+    let db_path: PathBuf = env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|dir| dir.join("mydb.sqlite")))
+        .unwrap_or_else(|| PathBuf::from(default_path));
 
-    if let Ok(exe_path) = env::current_exe() {
-        if let Some(exe_dir) = exe_path.parent() {
-            let db_path = Some(exe_dir.join("mydb.sqlite"));
-        }
-    }
 
-    let db_url = format!("sqlite://{db_path}");
+    let db_url = format!(
+        "sqlite://{}",
+        db_path.to_str().unwrap_or(default_path)
+    );
 
     // Ensure the file exists
-    if !Path::new(db_path).exists() {
-        fs::File::create(db_path)?;
-        println!("Created new database file: {db_path}");
+    if !db_path.exists() {
+        fs::File::create(&db_path)?;
+        println!("Created new database file: {}", db_path.display());
     }
 
     // Setup step: handle errors explicitly
@@ -90,17 +96,20 @@ pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
     Ok(pool)
 }
 
-pub async fn add_guild(pool: &SqlitePool, guild: Guild) -> Result<(), sqlx::Error> {
-    sqlx::query("INSERT OR REPLACE INTO guilds (id, name, tag) VALUES (?, ?, ?)")
+pub async fn add_guild(pool: &SqlitePool, guild: Guild) {
+    if let Err(err ) = sqlx::query("INSERT OR REPLACE INTO guilds (id, name, tag) VALUES (?, ?, ?)")
         .bind(&guild.id)
         .bind(&guild.name)
         .bind(&guild.tag)
         .execute(pool)
-        .await?;
+        .await {
+            log_error(err);
+            return;
+        }
 
-    upsert_last_updated(pool, &guild.id, Utc::now()).await?;
-
-    Ok(())
+    if let Err(err) = upsert_last_updated(pool, &guild.id, Utc::now()).await {
+        log_error(err);
+    }
 }
 
 pub async fn get_guild(pool: &SqlitePool, guild_id: &str) -> Result<Option<Guild>, sqlx::Error> {
@@ -112,14 +121,18 @@ pub async fn get_guild(pool: &SqlitePool, guild_id: &str) -> Result<Option<Guild
     Ok(guild)
 }
 
-pub async fn guild_exists(pool: &SqlitePool, guild_id: &str) -> Result<bool, sqlx::Error> {
-    let exists: bool = sqlx::query_scalar::<_, i64>("SELECT 1 FROM guilds WHERE id = ? LIMIT 1")
+pub async fn guild_in_db(pool: &SqlitePool, guild_id: &str) -> bool {
+
+    match sqlx::query_scalar::<_, i64>("SELECT 1 FROM guilds WHERE id = ? LIMIT 1")
         .bind(guild_id)
         .fetch_optional(pool)
-        .await?
-        .is_some();
-
-    Ok(exists)
+        .await {
+            Ok(a) => a.is_some(),
+            Err(err) => {
+                log_error(err);
+                false
+            },
+        }
 }
 
 pub async fn upsert_last_updated(
@@ -145,29 +158,28 @@ pub async fn upsert_last_updated(
 pub async fn get_last_guild_update(
     pool: &SqlitePool,
     guild_id: &str,
-) -> Result<Option<DateTime<Utc>>, sqlx::Error> {
-    let last_update_str: Option<String> =
-        sqlx::query_scalar("SELECT last_update FROM guild_last_updated WHERE guild_id = ?")
+) -> Option<DateTime<Utc>> {
+    
+        match sqlx::query_scalar::<Sqlite, String>("SELECT last_update FROM guild_last_updated WHERE guild_id = ?")
             .bind(guild_id)
             .fetch_optional(pool)
-            .await?;
-
-    if let Some(ts) = last_update_str {
-        match ts.parse::<DateTime<Utc>>() {
-            Ok(dt) => Ok(Some(dt)),
-            Err(_) => Ok(None), // parse error treated as missing
+            .await //.map(|ts: String| ts.parse::<DateTime<Utc>>().ok()).flatten()
+        {
+            Ok(Some(ts)) => ts.parse::<DateTime<Utc>>().ok(),
+            Ok(None) => None,
+            Err(err) => {
+                log_error(err);
+                None
+            }
         }
-    } else {
-        Ok(None)
-    }
 }
 
 pub async fn upsert_guild_team(
     pool: &SqlitePool,
     guild_id: &str,
     team_id: Option<&str>,
-) -> Result<(), sqlx::Error> {
-    sqlx::query(
+) {
+    if let Err(err) = sqlx::query(
         r"
         INSERT INTO guild_team (guild_id, team_id)
         VALUES (?, ?)
@@ -177,15 +189,15 @@ pub async fn upsert_guild_team(
     .bind(guild_id)
     .bind(team_id) // Option<&str> works; NULL if None
     .execute(pool)
-    .await?;
-
-    Ok(())
+    .await {
+        log_error(err);
+    }
 }
 
 pub async fn upsert_guild_team_null(
     pool: &SqlitePool,
     excluded_guild_ids: Vec<String>,
-) -> Result<(), sqlx::Error> {
+) {
     let placeholders = excluded_guild_ids
         .iter()
         .enumerate()
@@ -193,21 +205,20 @@ pub async fn upsert_guild_team_null(
         .collect::<Vec<_>>()
         .join(", ");
 
-    let query =
-        format!("UPDATE guild_team SET team_id = NULL WHERE guild_id NOT IN ({placeholders})");
+    let query = format!("UPDATE guild_team SET team_id = NULL WHERE guild_id NOT IN ({placeholders})");
 
     let mut q = sqlx::query(&query);
     for id in &excluded_guild_ids {
         q = q.bind(id);
     }
 
-    q.execute(pool).await?;
-
-    Ok(())
+    if let Err(err) = q.execute(pool).await {
+        log_error(err);
+    }
 }
 
-pub async fn upsert_match(pool: &SqlitePool, m: &Match) -> Result<(), sqlx::Error> {
-    sqlx::query(
+pub async fn upsert_match(pool: &SqlitePool, m: &Match) {
+    let query_result = sqlx::query(
         r"
         INSERT INTO matches (
             id, start_time, end_time,
@@ -236,13 +247,16 @@ pub async fn upsert_match(pool: &SqlitePool, m: &Match) -> Result<(), sqlx::Erro
     .bind(m.victory_points.green)
     .bind(m.victory_points.blue)
     .execute(pool)
-    .await?;
+    .await;
 
-    Ok(())
+    if let Err(err) = query_result {
+        log_error(err);
+    }
+
 }
 
-pub async fn get_match(pool: &SqlitePool, tier: Tier) -> Result<Option<Match>, sqlx::Error> {
-    sqlx::query_as::<_, Match>(
+pub async fn get_match(pool: &SqlitePool, tier: Tier) -> Option<Match> { 
+    match sqlx::query_as::<_, Match>(
         r"
         SELECT *
         FROM matches
@@ -251,7 +265,13 @@ pub async fn get_match(pool: &SqlitePool, tier: Tier) -> Result<Option<Match>, s
     )
     .bind(tier.as_id())
     .fetch_optional(pool)
-    .await
+    .await {
+        Ok(m) => m,
+        Err(err) => {
+            log_error(err);
+            None
+        },
+    }
 }
 
 pub async fn get_guild_team(

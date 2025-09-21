@@ -2,6 +2,13 @@
 name = "WvWOverview"
 version = "0.1.0"
 edition = "2024"
+authors = ["Philipp Brodersen"]
+description = "A backend + frontend to visualize data from the Guild Wars 2 game made World vs World"
+license = "GPL-3.0-only"
+repository = "https://github.com/PhilippBrodersen/WvWOverview/"
+keywords = ["guildwars2", "wvw", "api", "overview"]
+categories = ["api-bindings", "games"]
+readme = "README.md"
 
 [dependencies]
 axum = "0.8.4"
@@ -33,4 +40,4 @@ strip = true
 all = "warn"
 pedantic = "warn"
 nursery = "warn"
-cargo = "warn"
+#cargo = "warn"

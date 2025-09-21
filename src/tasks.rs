@@ -1,7 +1,7 @@
 #![warn(clippy::pedantic)]
 
 use std::{
-    collections::{BTreeMap, HashMap}, env::{self, current_exe}, fmt, fs::OpenOptions, io::Write, path::PathBuf, sync::Arc
+    collections::{BTreeMap, HashMap}, env::{self}, fmt, fs::OpenOptions, io::Write, path::PathBuf, sync::Arc
 };
 
 use chrono::{Duration, Utc};
@@ -19,7 +19,7 @@ use crate::{
     data::{Data, MatchColor, MatchData, Tier},
     database::{
         add_guild, get_guilds_for_team, get_last_guild_update, get_match, get_team_id_for_guild,
-        guild_exists, upsert_guild_team, upsert_guild_team_null, upsert_match,
+        guild_in_db, upsert_guild_team, upsert_guild_team_null, upsert_match,
     },
     gw2api::{fetch_all_wvw_guild_ids, fetch_guild_info, fetch_match},
 };
@@ -54,30 +54,30 @@ static TEAM_NAMES: phf::Map<&'static str, &'static str> = phf_map! {
     "12015" => "Bava Nisos",
 };
 
-fn log_error<E: fmt::Debug>(err: E) {
+pub fn log_error<E: fmt::Debug>(err: E) {
+
+    let default_file = "error.log";
+
+    let error_path: PathBuf = env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(|dir| dir.join(default_file)))
+        .unwrap_or_else(|| PathBuf::from(default_file));
+
     let debug_str = format!("{err:?}\n");
-    let error_path: Option<PathBuf> = None;
-    if let Ok(exe_path) = env::current_exe() {
-        if let Some(exe_dir) = exe_path.parent() {
-            let error_path = Some(exe_dir.join("error.log"));
-            if let Ok(mut file) = OpenOptions::new()
-                .create(true)
-                .append(true)
-                .open("error.log")
-            {
-                if let Err(e) = file.write_all(debug_str.as_bytes()) {
-                    eprintln!("Failed to write to log file: {e:?}");
-                }
-            } else {
-                eprintln!("Failed to open error.log");
+
+    match OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&error_path)
+    {
+        Ok(mut file) => {
+            if let Err(e) = file.write_all(debug_str.as_bytes()) {
+                eprintln!("Failed to write to log file {}: {e:?}", error_path.display());
             }
         }
-        else {
-            eprintln!("Failed to open log path");
-        }  
-    }
-    else {
-        eprintln!("Failed to open log path");
+        Err(e) => {
+            eprintln!("Failed to open log file {}: {e:?}", error_path.display());
+        }
     }
 }
 
@@ -98,15 +98,8 @@ pub async fn update_matches(pool: &SqlitePool) {
     for tier in Tier::all() {
         let pool: sqlx::Pool<sqlx::Sqlite> = pool.clone();
         tasks.push(tokio::spawn(async move {
-            match fetch_match(tier).await {
-                Ok(m) => {
-                    if let Err(err) = upsert_match(&pool, &m).await {
-                        log_error(err);
-                    }
-                }
-                Err(err) => {
-                    log_error(err);
-                }
+            if let Some(m) = fetch_match(tier).await {
+                upsert_match(&pool, &m).await;
             }
         }));
     }
@@ -129,59 +122,26 @@ pub async fn run_guild_updater(pool: &SqlitePool) {
 pub async fn update_guilds(pool: &SqlitePool) {
     let mut tasks = FuturesUnordered::new();
 
-    let result: HashMap<String, String> = match fetch_all_wvw_guild_ids().await {
-        Ok(ids) => ids,
-        Err(err) => {
-            log_error(err);
-            return;
-        }
-    };
-
+    let result: HashMap<String, String> = fetch_all_wvw_guild_ids().await.unwrap_or_default();
+        
     for (guild_id, team_id) in result.clone() {
         let pool: sqlx::Pool<sqlx::Sqlite> = pool.clone();
         tasks.push(tokio::spawn(async move {
-            let exists = guild_exists(&pool, &guild_id).await.unwrap_or_else(|err| {
-                log_error(err);
-                false
-            });
-            let last_update = get_last_guild_update(&pool, &guild_id)
-                .await
-                .unwrap_or_else(|err| {
-                    log_error(err);
-                    None
-                });
-
-            if !exists || last_update.is_none_or(|ts| Utc::now() - ts > Duration::hours(24)) {
-                match fetch_guild_info(&guild_id).await {
-                    Ok(Some(guild)) => match add_guild(&pool, guild).await {
-                        Ok(()) => {
-                            if let Err(err) =
-                                upsert_guild_team(&pool, &guild_id, Some(&team_id)).await
-                            {
-                                log_error(err);
-                            }
-                        }
-                        Err(err) => {
-                            log_error(err);
-                        }
-                    },
-                    Ok(None) => {}
-                    Err(err) => {
-                        log_error(err);
-                    }
+            let exists = guild_in_db(&pool, &guild_id).await;
+            let last_update = get_last_guild_update(&pool, &guild_id).await;
+            
+            if (!exists || last_update.is_none_or(|ts| Utc::now() - ts > Duration::hours(24)))
+                && let Some(guild) = fetch_guild_info(&guild_id).await {
+                    add_guild(&pool, guild).await;
+                    upsert_guild_team(&pool, &guild_id, Some(&team_id)).await;
                 }
-            }
-
-            //let team_id: Option<&str> = if team_id.is_empty() { None } else { Some(&team_id) };
         }));
     }
 
     while tasks.next().await.is_some() {}
 
     let exclude: Vec<String> = result.keys().cloned().collect();
-    if let Err(err) = upsert_guild_team_null(pool, exclude).await {
-        log_error(err);
-    }
+    upsert_guild_team_null(pool, exclude).await;
 }
 
 fn normalize_name(name: &str) -> String {
@@ -202,7 +162,7 @@ fn group_guilds(guilds: Vec<String>) -> BTreeMap<char, Vec<String>> {
             .to_ascii_uppercase();
         grouped.entry(first).or_default().push(g.clone());
     }
-    // sort each group
+
     for v in grouped.values_mut() {
         v.sort_by_key(|name| normalize_name(name));
     }
@@ -226,7 +186,6 @@ pub async fn run_mateches_cache_updater(pool: &SqlitePool, cache: Arc<RwLock<Dat
         loop {
             interval.tick().await;
             let data = build_data(&pool).await;
-            //make this available to the endpoint in a cached way
 
             let mut write_guard = cache.write().await;
             *write_guard = data;
@@ -237,10 +196,11 @@ pub async fn run_mateches_cache_updater(pool: &SqlitePool, cache: Arc<RwLock<Dat
 const IMPORTANT_GUILDS: &str = include_str!("../static/important_guilds.txt");
 
 pub async fn build_data(pool: &SqlitePool) -> Data {
-    let team_id = get_team_id_for_guild(pool, "Quality Ôver Quantity")
+    let team_id: String = get_team_id_for_guild(pool, "Quality Ôver Quantity")
         .await
-        .unwrap_or(Some("0".to_string()))
-        .unwrap_or("0".to_string());
+        .ok()                  
+        .flatten() 
+        .unwrap_or_else(|| "0".to_string());
     Data {
         matches: build_all_matches(pool).await,
         important_guilds: IMPORTANT_GUILDS
@@ -253,66 +213,42 @@ pub async fn build_data(pool: &SqlitePool) -> Data {
     }
 }
 
-pub async fn build_all_matches(pool: &SqlitePool) -> BTreeMap<u8, MatchData> {
+pub async fn build_all_matches(pool: &SqlitePool) -> BTreeMap<usize, MatchData> {
     let mut all_matches = BTreeMap::new();
 
-    let tiers = Tier::all();
+    for (i, tier) in Tier::all().into_iter().enumerate() {
+        if let Some(m) = get_match(pool, tier).await {
 
-    for i in 0..5 {
-        let tier = &tiers[i];
-        if let Some(m) = get_match(pool, *tier).await.unwrap() {
-            let t_id_red = fix_team_ids(&m.worlds.red.to_string());
-            let t_id_green = fix_team_ids(&m.worlds.green.to_string());
-            let t_id_blue = fix_team_ids(&m.worlds.blue.to_string());
+            let ids = [
+                fix_team_ids(&m.worlds.red.to_string()),
+                fix_team_ids(&m.worlds.green.to_string()),
+                fix_team_ids(&m.worlds.blue.to_string())
+            ];
 
-            let red: MatchColor = MatchColor {
-                team_name: TEAM_NAMES
-                    .get(&t_id_red)
-                    .map_or(format!("Red-{i}"), |name| (*name).to_string()),
-                victory_points: m.victory_points.red.to_string(),
-                guilds: group_guilds(
-                    get_guilds_for_team(pool, &t_id_red)
-                        .await
-                        .unwrap_or_default()
-                        .iter()
-                        .map(std::string::ToString::to_string)
-                        .collect(),
-                ),
-            };
+            let mut team = vec![];
 
-            let green = MatchColor {
-                team_name: TEAM_NAMES
-                    .get(&t_id_green)
-                    .map_or(format!("Green-{i}"), |name| (*name).to_string()),
-                victory_points: m.victory_points.green.to_string(),
-                guilds: group_guilds(
-                    get_guilds_for_team(pool, &t_id_green)
-                        .await
-                        .unwrap_or_default()
-                        .iter()
-                        .map(std::string::ToString::to_string)
-                        .collect(),
-                ),
-            };
+            for id in ids {
+                let t = MatchColor {
+                    team_name: TEAM_NAMES
+                        .get(&id)
+                        .map_or_else(|| "Unknown".to_string(), |name| (*name).to_string()),
+                    victory_points: m.victory_points.red.to_string(),
+                    guilds: group_guilds(
+                        get_guilds_for_team(pool, &id)
+                            .await
+                            .unwrap_or_default()
+                            .iter()
+                            .map(std::string::ToString::to_string)
+                            .collect(),
+                    ),
+                };
 
-            let blue = MatchColor {
-                team_name: TEAM_NAMES
-                    .get(&t_id_blue)
-                    .map_or(format!("Blue-{i}"), |name| (*name).to_string()),
-                victory_points: m.victory_points.blue.to_string(),
-                guilds: group_guilds(
-                    get_guilds_for_team(pool, &t_id_blue)
-                        .await
-                        .unwrap_or_default()
-                        .iter()
-                        .map(std::string::ToString::to_string)
-                        .collect(),
-                ),
-            };
+                team.push(t);                
+            }
 
-            let m = MatchData { red, green, blue };
+            let m = MatchData { red: team[0].clone(), green: team[1].clone(), blue: team[2].clone() };
 
-            all_matches.insert(i as u8, m);
+            all_matches.insert(i, m);
         }
     }
     all_matches

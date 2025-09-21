@@ -1,13 +1,15 @@
 #![warn(clippy::pedantic)]
 
 use reqwest::Error;
+use serde_json::Value;
 use std::collections::HashMap;
 use std::sync::{Arc, OnceLock};
 use std::time::{Duration, Instant};
 use tokio::sync::{Mutex, Semaphore};
 use tokio::time::sleep;
 
-use crate::data::{Guild, Issue, Match, Tier};
+use crate::data::{Guild, Match, Tier};
+use crate::tasks::log_error;
 
 struct RateLimiter {
     semaphore: Semaphore,
@@ -46,45 +48,40 @@ pub async fn fetch_json<T: serde::de::DeserializeOwned>(url: &str) -> Result<T, 
     result
 }
 
-pub async fn fetch_all_wvw_guild_ids() -> Result<HashMap<String, String>, Error> {
-    fetch_json("https://api.guildwars2.com/v2/wvw/guilds/eu").await
+pub async fn fetch_all_wvw_guild_ids() -> Option<HashMap<String, String>> {
+    match fetch_json("https://api.guildwars2.com/v2/wvw/guilds/eu").await {
+        Ok(map) => Some(map),
+        Err(err) => {
+            log_error(err);
+            None
+        },
+    }  
+
+        
 }
 
-pub async fn fetch_guild_info(guild_id: &str) -> Result<Option<Guild>, reqwest::Error> {
+pub async fn fetch_guild_info(guild_id: &str) -> Option<Guild> {
     let url = &format!("https://api.guildwars2.com/v2/guild/{guild_id}");
 
-    let result: Result<Guild, reqwest::Error> = fetch_json::<Guild>(url).await;
+    let raw_json: Value = match fetch_json::<Value>(url).await {
+        Ok(v) => v,
+        Err(err) => {
+            log_error(err);
+            return None;
+        }
+    };
 
-    match result {
-        Ok(guild) => Ok(Some(guild)),
-        Err(_) => match fetch_json::<Issue>(url).await {
-            Ok(_) => Ok(None),
-            Err(err) => Err(err),
-        },
-    }
+    serde_json::from_value::<Guild>(raw_json).ok()
 }
 
-pub async fn fetch_match(tier: Tier) -> Result<Match, reqwest::Error> {
+pub async fn fetch_match(tier: Tier) -> Option<Match> {
     let url = &format!("https://api.guildwars2.com/v2/wvw/matches/{}", tier.as_id());
 
-    let m: Match = fetch_json(url).await?;
-    Ok(m)
+    match fetch_json(url).await {
+        Ok(m) => Some(m),
+        Err(err) => {
+            log_error(err);
+            None
+        },
+    } 
 }
-
-/* pub async fn fetch_all_guilds(client: &ApiClient, guild_ids: Vec<String>) -> Vec<Guild> {
-    // Limit concurrency (optional, e.g., 10 tasks at a time)
-    let concurrency_limit = 10;
-
-    stream::iter(guild_ids)
-        .map(|id| {
-            //let client = client;
-            async move {
-                let url = format!("https://api.guildwars2.com/v2/guild/{}", id);
-                client.fetch_json::<Guild>(&url).await
-            }
-        })
-        .buffer_unordered(concurrency_limit)
-        .filter_map(|res| async { res.ok() }) // discard failed requests
-        .collect()
-        .await
-} */
