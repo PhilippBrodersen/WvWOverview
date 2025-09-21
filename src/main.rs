@@ -16,7 +16,7 @@ use crate::{
     database::init_db,
     tasks::{run_guild_updater, run_match_updater, run_mateches_cache_updater},
 };
-use clap::{command, Parser};
+use clap::{Parser, command};
 
 mod data;
 mod database;
@@ -25,8 +25,6 @@ mod tasks;
 
 const INDEX_HTML: &str = include_str!("../static/frontend/index.html");
 const FAVICON_SVG: &str = include_str!("../static/frontend/favicons/swords.svg");
-
-
 
 #[derive(Parser, Debug)]
 #[command(name = "WvW Overview")]
@@ -87,7 +85,7 @@ async fn favicon() -> impl IntoResponse {
     )
 }
 
-async fn data(State(cache): State<Arc<RwLock<Data>>>) -> Json<Data> {   
-    let cloned = cache.read().await.clone(); 
+async fn data(State(cache): State<Arc<RwLock<Data>>>) -> Json<Data> {
+    let cloned = cache.read().await.clone();
     Json(cloned)
 }

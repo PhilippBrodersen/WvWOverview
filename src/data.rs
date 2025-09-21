@@ -19,7 +19,7 @@ pub struct Guild {
 
 impl Display for Guild {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-       write!(f, "{} [{}]", self.name, self.tag)
+        write!(f, "{} [{}]", self.name, self.tag)
     }
 }
 

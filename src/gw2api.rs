@@ -54,10 +54,8 @@ pub async fn fetch_all_wvw_guild_ids() -> Option<HashMap<String, String>> {
         Err(err) => {
             log_error(err);
             None
-        },
-    }  
-
-        
+        }
+    }
 }
 
 pub async fn fetch_guild_info(guild_id: &str) -> Option<Guild> {
@@ -82,6 +80,6 @@ pub async fn fetch_match(tier: Tier) -> Option<Match> {
         Err(err) => {
             log_error(err);
             None
-        },
-    } 
+        }
+    }
 }

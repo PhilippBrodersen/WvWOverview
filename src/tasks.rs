@@ -1,7 +1,13 @@
 #![warn(clippy::pedantic)]
 
 use std::{
-    collections::{BTreeMap, HashMap}, env::{self}, fmt, fs::OpenOptions, io::Write, path::PathBuf, sync::Arc
+    collections::{BTreeMap, HashMap},
+    env::{self},
+    fmt,
+    fs::OpenOptions,
+    io::Write,
+    path::PathBuf,
+    sync::Arc,
 };
 
 use chrono::{Duration, Utc};
@@ -55,7 +61,6 @@ static TEAM_NAMES: phf::Map<&'static str, &'static str> = phf_map! {
 };
 
 pub fn log_error<E: fmt::Debug>(err: E) {
-
     let default_file = "error.log";
 
     let error_path: PathBuf = env::current_exe()
@@ -72,7 +77,10 @@ pub fn log_error<E: fmt::Debug>(err: E) {
     {
         Ok(mut file) => {
             if let Err(e) = file.write_all(debug_str.as_bytes()) {
-                eprintln!("Failed to write to log file {}: {e:?}", error_path.display());
+                eprintln!(
+                    "Failed to write to log file {}: {e:?}",
+                    error_path.display()
+                );
             }
         }
         Err(e) => {
@@ -123,18 +131,19 @@ pub async fn update_guilds(pool: &SqlitePool) {
     let mut tasks = FuturesUnordered::new();
 
     let result: HashMap<String, String> = fetch_all_wvw_guild_ids().await.unwrap_or_default();
-        
+
     for (guild_id, team_id) in result.clone() {
         let pool: sqlx::Pool<sqlx::Sqlite> = pool.clone();
         tasks.push(tokio::spawn(async move {
             let exists = guild_in_db(&pool, &guild_id).await;
             let last_update = get_last_guild_update(&pool, &guild_id).await;
-            
+
             if (!exists || last_update.is_none_or(|ts| Utc::now() - ts > Duration::hours(24)))
-                && let Some(guild) = fetch_guild_info(&guild_id).await {
-                    add_guild(&pool, guild).await;
-                    upsert_guild_team(&pool, &guild_id, Some(&team_id)).await;
-                }
+                && let Some(guild) = fetch_guild_info(&guild_id).await
+            {
+                add_guild(&pool, guild).await;
+                upsert_guild_team(&pool, &guild_id, Some(&team_id)).await;
+            }
         }));
     }
 
@@ -198,8 +207,8 @@ const IMPORTANT_GUILDS: &str = include_str!("../static/important_guilds.txt");
 pub async fn build_data(pool: &SqlitePool) -> Data {
     let team_id: String = get_team_id_for_guild(pool, "Quality Ôver Quantity")
         .await
-        .ok()                  
-        .flatten() 
+        .ok()
+        .flatten()
         .unwrap_or_else(|| "0".to_string());
     Data {
         matches: build_all_matches(pool).await,
@@ -218,11 +227,10 @@ pub async fn build_all_matches(pool: &SqlitePool) -> BTreeMap<usize, MatchData> 
 
     for (i, tier) in Tier::all().into_iter().enumerate() {
         if let Some(m) = get_match(pool, tier).await {
-
             let ids = [
                 fix_team_ids(&m.worlds.red.to_string()),
                 fix_team_ids(&m.worlds.green.to_string()),
-                fix_team_ids(&m.worlds.blue.to_string())
+                fix_team_ids(&m.worlds.blue.to_string()),
             ];
 
             let mut team = vec![];
@@ -243,10 +251,14 @@ pub async fn build_all_matches(pool: &SqlitePool) -> BTreeMap<usize, MatchData> 
                     ),
                 };
 
-                team.push(t);                
+                team.push(t);
             }
 
-            let m = MatchData { red: team[0].clone(), green: team[1].clone(), blue: team[2].clone() };
+            let m = MatchData {
+                red: team[0].clone(),
+                green: team[1].clone(),
+                blue: team[2].clone(),
+            };
 
             all_matches.insert(i, m);
         }
