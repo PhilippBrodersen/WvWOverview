@@ -243,7 +243,7 @@ pub async fn build_data(pool: &SqlitePool) -> Data {
             .collect(),
         our_team: TEAM_NAMES
             .get(&team_id)
-            .map_or("".to_string(), |name| (*name).to_string()),
+            .map_or(String::new(), |name| (*name).to_string()),
     }
 }
 

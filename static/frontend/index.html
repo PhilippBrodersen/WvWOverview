@@ -71,11 +71,12 @@ h1 {
     background-color: var(--panel-bg);
     overflow: hidden;
     transition: border-color 0.2s, box-shadow 0.2s, transform 0.1s;
+    --special-color: 100, 100, 100;
 }
 
 .group-button:hover {
-    border-color: var(--accent);
-    box-shadow: 0 0 8px rgba(102, 176, 255, 0.4);
+    border-color: rgb(var(--special-color));
+    box-shadow: 0 0 8px rgba(var(--special-color), 0.4);
     transform: translateY(-1px);
 }
 
@@ -103,11 +104,13 @@ h1 {
     z-index: 0;
     border-radius: 8px 0 0 8px;
     opacity: 0.4;
+    overflow: hidden;
+    background-color: rgba(var(--special-color), 0.4);
 }
 
 .group-button.active {
-    border-color: var(--accent);
-    box-shadow: 0 0 12px rgba(102, 176, 255, 0.6);
+    border-color: rgb(var(--special-color));
+    box-shadow: 0 0 12px rgba(var(--special-color), 0.6);
 }
 
 .tier-labels {
@@ -150,8 +153,7 @@ h1 {
     text-align: left;
     white-space: nowrap;
     box-sizing: border-box;
-    border-radius: 4px;
-    transition: background 0.05s;
+    border-radius: 4px; 
 }
 
 .guild-item:hover {
@@ -183,9 +185,6 @@ h1 {
 <body>
 <div id="headerContainer">
   <h1 id="mainTitle"></h1>
-  <div id="teamQualityWrapper">
-    <h1 id="teamQuality"></h1>
-  </div>
 </div>
 
 <div id="tierLabels" class="tier-labels"></div>
@@ -201,10 +200,11 @@ const teamQuality = document.getElementById("teamQuality");
 let activeBtnId = null;
 let lastEtag = null;
 
+
 const COLOR_MAP = {
-    red: "#d62222",
-    blue: "#124dcc",
-    green: "#17bf15"
+    red: "214,34,34",
+    blue: "18,77,204",
+    green: "23,191,21"
 };
 
 
@@ -229,13 +229,12 @@ async function fetchJSON(url) {
         const res = await fetch(url, { headers });
 
         if (res.status === 304) {
-            // nothing changed
             return null;
         }
 
         if (!res.ok) return null;
 
-        lastEtag = res.headers.get("ETag");  // update ETag
+        lastEtag = res.headers.get("ETag");
         return await res.json();
     } catch (err) {
         console.error("fetchJSON error:", err);
@@ -291,7 +290,6 @@ async function loadData() {
     await updateQoQHeader();
 }
 
-
 function renderGroups(groups) {
     groupGrid.innerHTML = "";
 
@@ -303,28 +301,25 @@ function renderGroups(groups) {
     groups.forEach(group => {
         const totalScore = tierTotals[group.tier] || 1;
         const percent = ((group.score || 0) / totalScore) * 100;
+        const baseColor = COLOR_MAP[group.color];
 
         const btn = document.createElement("button");
         btn.className = "group-button";
-        //btn.style.backgroundColor = "#ffffff"; // button background white
-        //btn.style.border = `1px solid ${COLOR_MAP[group.color] || "#ccc"}`;
+        btn.style.setProperty("--special-color", baseColor);
 
-        // Progress bar
         const progress = document.createElement("div");
         progress.className = "progress";
         progress.style.width = percent + "%";
-        progress.style.backgroundColor = COLOR_MAP[group.color] || "#ccc";
+        progress.style.backgroundColor = `rgba(${baseColor}, 1)` || "#ccc";
         btn.appendChild(progress);
 
-        // Score on left
         const scoreSpan = document.createElement("span");
         scoreSpan.className = "score";
         scoreSpan.textContent = group.score || 0;
         btn.appendChild(scoreSpan);
-
-        // Name centered
+ 
         const nameSpan = document.createElement("span");
-        nameSpan.className = "name"; // add class
+        nameSpan.className = "name";
         nameSpan.textContent = group.name;
         btn.appendChild(nameSpan);
 
@@ -332,7 +327,6 @@ function renderGroups(groups) {
             const prev = groupGrid.querySelector(".active");
             if (prev) prev.classList.remove("active");
 
-            // set new active
             btn.classList.add("active");
             activeBtnId = group.id;
 
@@ -349,7 +343,6 @@ function renderGroups(groups) {
 
     groupGrid.appendChild(fragment);
 
-    // Activate first button
     if (groups.length > 0 && activeBtnId == null) {
         const firstGroup = groups[0];
         activeBtnId = firstGroup.id
@@ -398,8 +391,6 @@ async function liveUpdate() {
     }
 }
 
-
-// Initial 
 liveUpdate();
 </script>
 </body>
