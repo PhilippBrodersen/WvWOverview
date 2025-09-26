@@ -1,24 +1,35 @@
 #![warn(clippy::pedantic)]
 
-use std::{hash::{DefaultHasher, Hash, Hasher}, sync::Arc};
+use std::{
+    hash::{DefaultHasher, Hash, Hasher},
+    sync::Arc,
+    time::Duration,
+};
 
 use axum::{
-    body::Body, extract::State, http::{Request, Response}, response::{Html, IntoResponse}, routing::get, Router
+    Router,
+    body::Body,
+    extract::State,
+    http::{Request, Response},
+    response::{Html, IntoResponse},
+    routing::get,
 };
 use reqwest::StatusCode;
 use tokio::sync::RwLock;
 use tower_http::compression::CompressionLayer;
 
 use crate::{
-    data::{Data},
+    data::Data,
     database::init_db,
-    tasks::{run_guild_updater, run_match_updater, run_mateches_cache_updater},
+    rate_limiter::ApiQueue,
+    tasks::{run_mateches_cache_updater, start_update_loops},
 };
 use clap::{Parser, command};
 
 mod data;
 mod database;
 mod gw2api;
+mod rate_limiter;
 mod tasks;
 
 const INDEX_HTML: &str = include_str!("../static/frontend/index.html");
@@ -43,9 +54,10 @@ async fn main() {
 
     let addr = format!("{}:{}", args.ip, args.port);
     let pool = init_db().await.unwrap();
+    let api_queue = Arc::new(ApiQueue::new(Duration::from_millis(210)));
 
-    run_guild_updater(&pool).await;
-    run_match_updater(&pool).await;
+    start_update_loops(&pool, &api_queue);
+
     let cache: Arc<RwLock<Data>> = Arc::new(RwLock::new(Data::default()));
     run_mateches_cache_updater(&pool, cache.clone()).await;
 
@@ -63,7 +75,6 @@ async fn main() {
         .route("/data/", get(data))
         .with_state(cache.clone())
         .layer(compression.clone());
-
 
     let favicon_route: Router<()> = Router::new()
         .route("/favicon.svg", get(favicon))
@@ -105,19 +116,20 @@ async fn data(State(cache): State<Arc<RwLock<Data>>>, req: Request<Body>) -> imp
     let etag = format!("\"{:x}\"", hasher.finish());
 
     if let Some(if_none_match) = req.headers().get("if-none-match")
-        && if_none_match.to_str().unwrap_or("") == etag {
-            // Data hasn't changed, return 304
-            return Response::builder()
-                .status(StatusCode::NOT_MODIFIED)
-                .body(Body::empty())
-                .unwrap();
-        }
+        && if_none_match.to_str().unwrap_or("") == etag
+    {
+        // Data hasn't changed, return 304
+        return Response::builder()
+            .status(StatusCode::NOT_MODIFIED)
+            .body(Body::empty())
+            .unwrap();
+    }
 
     let json = serde_json::to_string(&cloned).unwrap();
-   
+
     Response::builder()
-            .header("ETag", etag)
-            .header("Content-Type", "application/json")
-            .body(Body::from(json))
-            .unwrap()
+        .header("ETag", etag)
+        .header("Content-Type", "application/json")
+        .body(Body::from(json))
+        .unwrap()
 }

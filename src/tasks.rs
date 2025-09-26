@@ -11,7 +11,10 @@ use std::{
 };
 
 use chrono::{Duration, Utc};
-use futures::{StreamExt, stream::FuturesUnordered};
+use futures::{
+    StreamExt,
+    stream::{FuturesUnordered, Iter},
+};
 use phf::phf_map;
 use sqlx::SqlitePool;
 use tokio::{
@@ -22,12 +25,14 @@ use unicode_normalization::UnicodeNormalization;
 use unicode_normalization::char::is_combining_mark;
 
 use crate::{
-    data::{Data, MatchColor, MatchData, Tier},
+    data::{APIEndpoint, Data, Guild, Match, MatchColor, MatchData, Tier},
     database::{
-        add_guild, get_guilds_for_team, get_last_guild_update, get_match, get_team_id_for_guild,
-        guild_in_db, upsert_guild_team, upsert_guild_team_null, upsert_match,
+        get_guilds_for_team, get_last_guild_update, get_match, get_team_id_for_guild, guild_in_db,
+        guilds_to_update, upsert_guild, upsert_guild_team, upsert_guild_team_null,
+        upsert_guild_teams_bulk, upsert_match,
     },
     gw2api::{fetch_all_wvw_guild_ids, fetch_guild_id_by_name, fetch_guild_info, fetch_match},
+    rate_limiter::{ApiQueue, Priority},
 };
 
 static TEAM_NAMES: phf::Map<&'static str, &'static str> = phf_map! {
@@ -89,55 +94,62 @@ pub fn log_error<E: fmt::Debug>(err: E) {
     }
 }
 
-pub async fn run_match_updater(pool: &SqlitePool) {
-    let mut interval = time::interval(tokio::time::Duration::from_secs(60));
+pub fn start_update_loops(pool: &SqlitePool, api_queue: &Arc<ApiQueue>) {
+    tokio::spawn({
+        let pool = pool.clone();
+        let api_queue = api_queue.clone();
+        async move { update_matches(&pool, api_queue).await }
+    });
 
-    let pool = pool.clone();
-    tokio::spawn(async move {
-        loop {
-            interval.tick().await;
-            update_matches(&pool).await;
-        }
+    tokio::spawn({
+        let pool = pool.clone();
+        let api_queue = api_queue.clone();
+        async move { update_teams(&pool, api_queue).await }
+    });
+
+    tokio::spawn({
+        let pool = pool.clone();
+        let api_queue = api_queue.clone();
+        async move { update_known_guilds(&pool, api_queue).await }
     });
 }
 
-pub async fn update_matches(pool: &SqlitePool) {
-    let mut tasks = FuturesUnordered::new();
-    for tier in Tier::all() {
-        let pool: sqlx::Pool<sqlx::Sqlite> = pool.clone();
-        tasks.push(tokio::spawn(async move {
-            if let Some(m) = fetch_match(tier).await {
-                upsert_match(&pool, &m).await;
-            }
-        }));
+pub async fn update_matches(pool: &SqlitePool, api_queue: Arc<ApiQueue>) {
+    let mut interval = time::interval(tokio::time::Duration::from_secs(60));
+
+    loop {
+        interval.tick().await;
+
+        let mut tasks = FuturesUnordered::new();
+
+        for tier in Tier::all() {
+            let pool = pool.clone();
+            let api_queue = api_queue.clone();
+
+            tasks.push(async move {
+                if let Some(m) = api_queue
+                    .enqueue::<Match>(APIEndpoint::Match(tier), Priority::High)
+                    .await
+                {
+                    upsert_match(&pool, &m).await;
+                }
+            });
+        }
+
+        while tasks.next().await.is_some() {}
     }
-
-    while tasks.next().await.is_some() {}
 }
 
-pub async fn run_guild_updater(pool: &SqlitePool) {
-    let mut interval = time::interval(tokio::time::Duration::from_secs(60));
-
-    let pool = pool.clone();
-    tokio::spawn(async move {
-        loop {
-            interval.tick().await;
-            update_guilds(&pool).await;
-        }
-    });
-}
-
-pub async fn update_guilds(pool: &SqlitePool) {
-    let mut tasks = FuturesUnordered::new();
-
-    let result: HashMap<String, String> = fetch_all_wvw_guild_ids().await.unwrap_or_default();
-
-    let mut my_guild_group = Vec::new();
+fn sort_guilds(
+    unsorted_guilds: HashMap<String, String>,
+    my_guild_id: String,
+) -> Vec<(String, String)> {
+    let mut my_guild_group: Vec<(String, String)> = Vec::new();
     let mut my_team_group = Vec::new();
     let mut other_guilds = Vec::new();
 
-    if let Some(my_guild_id) = fetch_guild_id_by_name("Quality Ôver Quantity".to_string()).await && let Some(my_team_id) = result.get(&my_guild_id) {
-        for (guild_id, team_id) in &result {
+    if let Some(my_team_id) = unsorted_guilds.get(&my_guild_id) {
+        for (guild_id, team_id) in &unsorted_guilds {
             let guild_id = guild_id.clone();
             let team_id = team_id.clone();
 
@@ -149,33 +161,87 @@ pub async fn update_guilds(pool: &SqlitePool) {
                 other_guilds.push((guild_id, team_id));
             }
         }
+    } else {
+        other_guilds = unsorted_guilds.into_iter().collect();
     }
 
-    for group in [&my_guild_group, &my_team_group, &other_guilds] {
-        for (guild_id, team_id) in group {
-            let pool: sqlx::Pool<sqlx::Sqlite> = pool.clone();
-            let guild_id = guild_id.clone();
-            let team_id = team_id.clone();
+    my_guild_group.extend(my_team_group);
+    my_guild_group.extend(other_guilds);
+    my_guild_group
+}
 
-            tasks.push(tokio::spawn(async move {
-                let exists = guild_in_db(&pool, &guild_id).await;
-                let last_update = get_last_guild_update(&pool, &guild_id).await;
+pub async fn update_known_guilds(pool: &SqlitePool, api_queue: Arc<ApiQueue>) {
+    let mut interval = time::interval(tokio::time::Duration::from_secs(60));
 
-                if (!exists || last_update.is_none_or(|ts| Utc::now() - ts > Duration::hours(24)))
-                    && let Some(guild) = fetch_guild_info(&guild_id).await
+    loop {
+        interval.tick().await;
+
+        let guild_ids = guilds_to_update(&pool).await;
+
+        let mut tasks = FuturesUnordered::new();
+
+        for id in guild_ids {
+            tasks.push(async {
+                if let Some(guild) = api_queue
+                    .enqueue::<Guild>(APIEndpoint::Guild(id), Priority::Low)
+                    .await
                 {
-                    add_guild(&pool, guild).await;
-                    upsert_guild_team(&pool, &guild_id, Some(&team_id)).await;
+                    upsert_guild(&pool, guild).await;
                 }
-            }));
+            });
+        }
+
+        while tasks.next().await.is_some() {}
+    }
+}
+
+pub async fn update_teams(pool: &SqlitePool, api_queue: Arc<ApiQueue>) {
+    let mut interval = time::interval(tokio::time::Duration::from_secs(60));
+
+    loop {
+        interval.tick().await;
+
+        if let Some(guild_map) = api_queue
+            .enqueue::<HashMap<String, String>>(APIEndpoint::AllWvWGuilds, Priority::High)
+            .await
+        {
+            upsert_guild_team_null(pool, guild_map.keys().cloned().collect()).await;
+
+            let guild_list = match api_queue
+                .enqueue::<[String; 1]>(
+                    APIEndpoint::GuildIDfromName("Quality Ôver Quantity".to_string()),
+                    Priority::High,
+                )
+                .await
+                .map(|[s]| s)
+            {
+                Some(id) => sort_guilds(guild_map, id),
+                None => guild_map.into_iter().collect(),
+            };
+
+            upsert_guild_teams_bulk(pool, guild_list.clone()).await;
+
+            let mut tasks = FuturesUnordered::new();
+            for (guild_id, team_id) in guild_list {
+                let pool = pool.clone();
+                let api_queue = api_queue.clone();
+
+                tasks.push(async move {
+                    let exists: bool = guild_in_db(&pool, &guild_id).await;
+
+                    if !exists
+                        && let Some(guild) = api_queue
+                            .enqueue::<Guild>(APIEndpoint::Guild(guild_id), Priority::Normal)
+                            .await
+                    {
+                        upsert_guild(&pool, guild).await;
+                    }
+                });
+            }
+
+            while tasks.next().await.is_some() {}
         }
     }
-
-    while tasks.next().await.is_some() {}
-
-    let exclude: Vec<String> = result.keys().cloned().collect();
-    upsert_guild_team_null(pool, exclude).await;
-
 }
 
 fn normalize_name(name: &str) -> String {

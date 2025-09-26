@@ -6,8 +6,8 @@ Note: all functions in this file swallow errors by just passing to to log_error
 
 use std::{env, fs, path::PathBuf};
 
-use chrono::{DateTime, Utc};
-use sqlx::{Sqlite, SqlitePool};
+use chrono::{DateTime, Duration, Utc};
+use sqlx::{Sqlite, SqlitePool, sqlite::SqlitePoolOptions};
 
 use crate::{
     data::{Guild, Match, Tier},
@@ -30,13 +30,30 @@ pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
     }
 
     // Setup step: handle errors explicitly
-    let pool = match SqlitePool::connect(&db_url).await {
-        Ok(pool) => pool,
-        Err(e) => {
-            eprintln!("Failed to connect to database: {e}");
-            return Err(e);
-        }
-    };
+
+    let pool = SqlitePoolOptions::new()
+        .max_connections(5)
+        .after_connect(|conn, _meta| {
+            Box::pin(async move {
+                sqlx::query("PRAGMA journal_mode = WAL;")
+                    .execute(&mut *conn)
+                    .await?;
+                sqlx::query("PRAGMA busy_timeout = 5000;")
+                    .execute(&mut *conn)
+                    .await?;
+                Ok(())
+            })
+        })
+        .connect(&db_url)
+        .await?;
+
+    sqlx::query("PRAGMA journal_mode = WAL;")
+        .execute(&pool)
+        .await?;
+
+    sqlx::query("PRAGMA busy_timeout = 5000;") // 5 seconds
+        .execute(&pool)
+        .await?;
 
     sqlx::query(
         r"
@@ -54,8 +71,7 @@ pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
         r"
         CREATE TABLE IF NOT EXISTS guild_last_updated (
             guild_id TEXT PRIMARY KEY,
-            last_update TEXT NOT NULL,
-            FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE
+            last_update TEXT NOT NULL
         );
         ",
     )
@@ -66,8 +82,7 @@ pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
         r"
         CREATE TABLE IF NOT EXISTS guild_team (
             guild_id TEXT PRIMARY KEY,     -- each guild belongs to only one team
-            team_id TEXT,
-            FOREIGN KEY (guild_id) REFERENCES guilds(id) ON DELETE CASCADE
+            team_id TEXT
         );
         ",
     )
@@ -95,7 +110,7 @@ pub async fn init_db() -> Result<SqlitePool, sqlx::Error> {
     Ok(pool)
 }
 
-pub async fn add_guild(pool: &SqlitePool, guild: Guild) {
+pub async fn upsert_guild(pool: &SqlitePool, guild: Guild) {
     if let Err(err) = sqlx::query("INSERT OR REPLACE INTO guilds (id, name, tag) VALUES (?, ?, ?)")
         .bind(&guild.id)
         .bind(&guild.name)
@@ -142,9 +157,7 @@ pub async fn upsert_last_updated(
 ) -> Result<(), sqlx::Error> {
     sqlx::query(
         r"
-        INSERT INTO guild_last_updated (guild_id, last_update)
-        VALUES (?, ?)
-        ON CONFLICT(guild_id) DO UPDATE SET last_update = excluded.last_update;
+        INSERT OR REPLACE  INTO guild_last_updated (guild_id, last_update) VALUES (?, ?)
         ",
     )
     .bind(guild_id)
@@ -170,12 +183,37 @@ pub async fn get_last_guild_update(pool: &SqlitePool, guild_id: &str) -> Option<
         }
 }
 
+pub async fn upsert_guild_teams_bulk(pool: &SqlitePool, guild_list: Vec<(String, String)>) {
+    if guild_list.is_empty() {
+        return;
+    }
+
+    let placeholders: Vec<String> = (0..guild_list.len())
+        .map(|_| "(?, ?)".to_string())
+        .collect();
+
+    let sql = format!(
+        "INSERT OR REPLACE INTO guild_team (guild_id, team_id) VALUES {};",
+        placeholders.join(", ")
+    );
+
+    let mut query = sqlx::query(&sql);
+
+    for (guild_id, team_id) in guild_list {
+        query = query.bind(guild_id);
+        query = query.bind(team_id);
+    }
+
+    if let Err(err) = query.execute(pool).await {
+        log_error(err);
+    }
+}
+
 pub async fn upsert_guild_team(pool: &SqlitePool, guild_id: &str, team_id: Option<&str>) {
     if let Err(err) = sqlx::query(
         r"
-        INSERT INTO guild_team (guild_id, team_id)
+        INSERT OR REPLACE INTO guild_team (guild_id, team_id)
         VALUES (?, ?)
-        ON CONFLICT(guild_id) DO UPDATE SET team_id = excluded.team_id;
         ",
     )
     .bind(guild_id)
@@ -183,7 +221,33 @@ pub async fn upsert_guild_team(pool: &SqlitePool, guild_id: &str, team_id: Optio
     .execute(pool)
     .await
     {
+        let a: String = guild_id.to_string();
+        let b: String = team_id.unwrap_or("none").to_string();
+
         log_error(err);
+    }
+}
+
+pub async fn guilds_to_update(pool: &SqlitePool) -> Vec<String> {
+    let cutoff = Utc::now() - Duration::hours(24);
+    let cutoff_str = cutoff.to_rfc3339();
+
+    match sqlx::query_scalar::<_, String>(
+        r"
+        SELECT guild_id
+        FROM guild_last_updated
+        WHERE last_update < ?
+        ",
+    )
+    .bind(&cutoff_str)
+    .fetch_all(pool)
+    .await
+    {
+        Ok(ids) => ids,
+        Err(err) => {
+            log_error(err);
+            Vec::new()
+        }
     }
 }
 
