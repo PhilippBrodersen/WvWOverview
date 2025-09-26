@@ -174,7 +174,7 @@ pub async fn update_known_guilds(pool: &SqlitePool, api_queue: Arc<ApiQueue>) {
     loop {
         interval.tick().await;
 
-        let guild_ids = guilds_to_update(&pool).await;
+        let guild_ids = guilds_to_update(pool).await;
 
         let mut tasks = FuturesUnordered::new();
 
@@ -184,7 +184,7 @@ pub async fn update_known_guilds(pool: &SqlitePool, api_queue: Arc<ApiQueue>) {
                     .enqueue::<Guild>(APIEndpoint::Guild(id), Priority::Low)
                     .await
                 {
-                    upsert_guild(&pool, guild).await;
+                    upsert_guild(pool, guild).await;
                 }
             });
         }

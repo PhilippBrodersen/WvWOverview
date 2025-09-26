@@ -23,7 +23,7 @@ impl Display for APIEndpoint {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::Match(tier) => write!(f, "{API_BASE}/wvw/matches/{}", tier.as_id()),
-            Self::Guild(guild_id) => write!(f, "{API_BASE}/guild/{}", guild_id),
+            Self::Guild(guild_id) => write!(f, "{API_BASE}/guild/{guild_id}"),
             Self::AllWvWGuilds => write!(f, "{API_BASE}/wvw/guilds/eu"),
             Self::GuildIDfromName(guild_name) => {
                 write!(f, "{API_BASE}/guild/search?name={guild_name}")

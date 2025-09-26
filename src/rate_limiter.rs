@@ -26,11 +26,11 @@ struct ApiCall {
 
 // Helper to convert Priority to a numeric value
 impl Priority {
-    fn value(&self) -> u8 {
+    const fn value(&self) -> u8 {
         match self {
-            Priority::High => 3,
-            Priority::Normal => 2,
-            Priority::Low => 1,
+            Self::High => 3,
+            Self::Normal => 2,
+            Self::Low => 1,
         }
     }
 }
@@ -92,7 +92,7 @@ impl ApiQueue {
         T: 'static + Send + DeserializeOwned,
     {
         let (tx, rx) = oneshot::channel::<Option<T>>();
-        let url_clone = end_point.to_string().clone();
+        let url_clone = end_point.to_string();
         let job = move || {
             tokio::spawn(async move {
                 if let Ok(response) = reqwest::get(url_clone).await
