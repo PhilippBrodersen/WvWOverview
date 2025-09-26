@@ -10,10 +10,7 @@ use std::{
     sync::Arc,
 };
 
-use futures::{
-    StreamExt,
-    stream::FuturesUnordered,
-};
+use futures::{StreamExt, stream::FuturesUnordered};
 use phf::phf_map;
 use sqlx::SqlitePool;
 use tokio::{
@@ -26,9 +23,8 @@ use unicode_normalization::char::is_combining_mark;
 use crate::{
     data::{APIEndpoint, Data, Guild, Match, MatchColor, MatchData, Tier},
     database::{
-        get_guilds_for_team, get_match, get_team_id_for_guild, guild_in_db,
-        guilds_to_update, upsert_guild, upsert_guild_team_null,
-        upsert_guild_teams_bulk, upsert_match,
+        get_guilds_for_team, get_match, get_team_id_for_guild, guild_in_db, guilds_to_update,
+        upsert_guild, upsert_guild_team_null, upsert_guild_teams_bulk, upsert_match,
     },
     rate_limiter::{ApiQueue, Priority},
 };
@@ -126,7 +122,7 @@ pub async fn update_matches(pool: &SqlitePool, api_queue: Arc<ApiQueue>) {
 
             tasks.push(async move {
                 if let Some(m) = api_queue
-                    .enqueue::<Match>(APIEndpoint::Match(tier), Priority::High)
+                    .enqueue::<Match>(&APIEndpoint::Match(tier), Priority::High)
                     .await
                 {
                     upsert_match(&pool, &m).await;
@@ -140,18 +136,18 @@ pub async fn update_matches(pool: &SqlitePool, api_queue: Arc<ApiQueue>) {
 
 fn sort_guilds(
     unsorted_guilds: HashMap<String, String>,
-    my_guild_id: String,
+    my_guild_id: &str,
 ) -> Vec<(String, String)> {
     let mut my_guild_group: Vec<(String, String)> = Vec::new();
     let mut my_team_group = Vec::new();
     let mut other_guilds = Vec::new();
 
-    if let Some(my_team_id) = unsorted_guilds.get(&my_guild_id) {
+    if let Some(my_team_id) = unsorted_guilds.get(my_guild_id) {
         for (guild_id, team_id) in &unsorted_guilds {
             let guild_id = guild_id.clone();
             let team_id = team_id.clone();
 
-            if *guild_id == my_guild_id {
+            if guild_id == my_guild_id {
                 my_guild_group.push((guild_id, team_id));
             } else if team_id == *my_team_id {
                 my_team_group.push((guild_id, team_id));
@@ -181,7 +177,7 @@ pub async fn update_known_guilds(pool: &SqlitePool, api_queue: Arc<ApiQueue>) {
         for id in guild_ids {
             tasks.push(async {
                 if let Some(guild) = api_queue
-                    .enqueue::<Guild>(APIEndpoint::Guild(id), Priority::Low)
+                    .enqueue::<Guild>(&APIEndpoint::Guild(id), Priority::Low)
                     .await
                 {
                     upsert_guild(pool, guild).await;
@@ -200,27 +196,27 @@ pub async fn update_teams(pool: &SqlitePool, api_queue: Arc<ApiQueue>) {
         interval.tick().await;
 
         if let Some(guild_map) = api_queue
-            .enqueue::<HashMap<String, String>>(APIEndpoint::AllWvWGuilds, Priority::High)
+            .enqueue::<HashMap<String, String>>(&APIEndpoint::AllWvWGuilds, Priority::High)
             .await
         {
             upsert_guild_team_null(pool, guild_map.keys().cloned().collect()).await;
 
             let guild_list = match api_queue
                 .enqueue::<[String; 1]>(
-                    APIEndpoint::GuildIDfromName("Quality Ôver Quantity".to_string()),
+                    &APIEndpoint::GuildIDfromName("Quality Ôver Quantity".to_string()),
                     Priority::High,
                 )
                 .await
                 .map(|[s]| s)
             {
-                Some(id) => sort_guilds(guild_map, id),
+                Some(id) => sort_guilds(guild_map, &id),
                 None => guild_map.into_iter().collect(),
             };
 
             upsert_guild_teams_bulk(pool, guild_list.clone()).await;
 
             let mut tasks = FuturesUnordered::new();
-            for (guild_id, team_id) in guild_list {
+            for (guild_id, _) in guild_list {
                 let pool = pool.clone();
                 let api_queue = api_queue.clone();
 
@@ -229,7 +225,7 @@ pub async fn update_teams(pool: &SqlitePool, api_queue: Arc<ApiQueue>) {
 
                     if !exists
                         && let Some(guild) = api_queue
-                            .enqueue::<Guild>(APIEndpoint::Guild(guild_id), Priority::Normal)
+                            .enqueue::<Guild>(&APIEndpoint::Guild(guild_id), Priority::Normal)
                             .await
                     {
                         upsert_guild(&pool, guild).await;

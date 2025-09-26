@@ -12,6 +12,7 @@ pub struct Issue {
 
 const API_BASE: &str = "https://api.guildwars2.com/v2";
 
+#[derive(Clone)]
 pub enum APIEndpoint {
     Match(Tier),
     Guild(String),

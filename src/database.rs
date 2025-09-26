@@ -127,6 +127,7 @@ pub async fn upsert_guild(pool: &SqlitePool, guild: Guild) {
     }
 }
 
+#[allow(dead_code)]
 pub async fn get_guild(pool: &SqlitePool, guild_id: &str) -> Result<Option<Guild>, sqlx::Error> {
     let guild = sqlx::query_as::<_, Guild>("SELECT id, name, tag FROM guilds WHERE id = ?")
         .bind(guild_id)
@@ -168,6 +169,7 @@ pub async fn upsert_last_updated(
     Ok(())
 }
 
+#[allow(dead_code)]
 pub async fn get_last_guild_update(pool: &SqlitePool, guild_id: &str) -> Option<DateTime<Utc>> {
     match sqlx::query_scalar::<Sqlite, String>("SELECT last_update FROM guild_last_updated WHERE guild_id = ?")
             .bind(guild_id)
@@ -209,6 +211,7 @@ pub async fn upsert_guild_teams_bulk(pool: &SqlitePool, guild_list: Vec<(String,
     }
 }
 
+#[allow(dead_code)]
 pub async fn upsert_guild_team(pool: &SqlitePool, guild_id: &str, team_id: Option<&str>) {
     if let Err(err) = sqlx::query(
         r"
@@ -221,9 +224,6 @@ pub async fn upsert_guild_team(pool: &SqlitePool, guild_id: &str, team_id: Optio
     .execute(pool)
     .await
     {
-        let a: String = guild_id.to_string();
-        let b: String = team_id.unwrap_or("none").to_string();
-
         log_error(err);
     }
 }
@@ -329,6 +329,7 @@ pub async fn get_match(pool: &SqlitePool, tier: Tier) -> Option<Match> {
     }
 }
 
+#[allow(dead_code)]
 pub async fn get_guild_team(
     pool: &SqlitePool,
     guild_id: &str,
@@ -343,6 +344,7 @@ pub async fn get_guild_team(
     Ok(Some(team_id))
 }
 
+#[allow(dead_code)]
 pub async fn get_all_guild_teams(
     pool: &SqlitePool,
 ) -> Result<Vec<(String, Option<String>)>, sqlx::Error> {
@@ -355,12 +357,14 @@ pub async fn get_all_guild_teams(
     Ok(rows)
 }
 
+#[allow(dead_code)]
 pub async fn get_all_guilds(pool: &SqlitePool) -> Result<Vec<Guild>, sqlx::Error> {
     sqlx::query_as::<_, Guild>("SELECT id, name, tag FROM guilds")
         .fetch_all(pool)
         .await
 }
 
+#[allow(dead_code)]
 pub async fn get_all_matches(pool: &SqlitePool) -> Result<Vec<Match>, sqlx::Error> {
     let m = sqlx::query_as::<_, Match>(
         r"

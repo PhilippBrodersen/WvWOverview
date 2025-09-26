@@ -28,7 +28,6 @@ use clap::{Parser, command};
 
 mod data;
 mod database;
-mod gw2api;
 mod rate_limiter;
 mod tasks;
 

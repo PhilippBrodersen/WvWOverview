@@ -20,7 +20,6 @@ pub enum Priority {
 struct ApiCall {
     priority: Priority,
     enqueue_time: SystemTime,
-    url: String,
     job: Box<dyn FnOnce() -> tokio::task::JoinHandle<()> + Send>,
 }
 
@@ -78,6 +77,7 @@ impl ApiQueue {
         q
     }
 
+    #[allow(dead_code)]
     pub fn clear(&self) {
         let mut q = self.queue.lock().unwrap();
         q.clear();
@@ -85,7 +85,7 @@ impl ApiQueue {
 
     pub fn enqueue<T>(
         &self,
-        end_point: APIEndpoint,
+        end_point: &APIEndpoint,
         priority: Priority,
     ) -> impl Future<Output = Option<T>>
     where
@@ -106,7 +106,6 @@ impl ApiQueue {
         let call = ApiCall {
             priority,
             enqueue_time: SystemTime::now(),
-            url: end_point.to_string(),
             job: Box::new(job),
         };
 
