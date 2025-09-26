@@ -10,10 +10,9 @@ use std::{
     sync::Arc,
 };
 
-use chrono::{Duration, Utc};
 use futures::{
     StreamExt,
-    stream::{FuturesUnordered, Iter},
+    stream::FuturesUnordered,
 };
 use phf::phf_map;
 use sqlx::SqlitePool;
@@ -27,11 +26,10 @@ use unicode_normalization::char::is_combining_mark;
 use crate::{
     data::{APIEndpoint, Data, Guild, Match, MatchColor, MatchData, Tier},
     database::{
-        get_guilds_for_team, get_last_guild_update, get_match, get_team_id_for_guild, guild_in_db,
-        guilds_to_update, upsert_guild, upsert_guild_team, upsert_guild_team_null,
+        get_guilds_for_team, get_match, get_team_id_for_guild, guild_in_db,
+        guilds_to_update, upsert_guild, upsert_guild_team_null,
         upsert_guild_teams_bulk, upsert_match,
     },
-    gw2api::{fetch_all_wvw_guild_ids, fetch_guild_id_by_name, fetch_guild_info, fetch_match},
     rate_limiter::{ApiQueue, Priority},
 };
 
