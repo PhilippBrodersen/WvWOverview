@@ -67,7 +67,7 @@ pub fn log_error<E: fmt::Debug>(err: E) {
         .and_then(|exe| exe.parent().map(|dir| dir.join(default_file)))
         .unwrap_or_else(|| PathBuf::from(default_file));
 
-    let debug_str = format!("{err:?}\n");
+    let debug_str = format!("{:?}: {err:?}\n", time::Instant::now());
 
     match OpenOptions::new()
         .create(true)
@@ -290,7 +290,7 @@ pub async fn run_mateches_cache_updater(pool: &SqlitePool, cache: Arc<RwLock<Dat
 const IMPORTANT_GUILDS: &str = include_str!("../static/important_guilds.txt");
 
 pub async fn build_data(pool: &SqlitePool) -> Data {
-    let team_id: String = get_team_id_for_guild(pool, "Quality Ôver Quantity")
+    let team_id: String = get_team_id_for_guild(pool, "Unga Bunga On Eh Bu Ga")
         .await
         .ok()
         .flatten()
